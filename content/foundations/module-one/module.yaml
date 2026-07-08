@@ -1,0 +1,4 @@
+title: Module One
+description: Introductory module loaded by the content sync command.
+order: 1
+is_published: true

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block body_class %}bg-[#f7f7f7] text-[#1f1f1f] antialiased{% endblock %}
+{% block header %}{% endblock %}
+{% block main_class %}min-h-screen bg-[#f7f7f7]{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen flex-col">
+    {% include "partials/dashboard_header.html" %}
+    <div class="flex min-h-0 flex-1">
+        {% include "partials/dashboard_sidebar.html" %}
+        <section class="min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
+            <div class="mb-6">
+                <p class="text-sm font-semibold text-[#0067c0]">Learning Paths</p>
+                <h1 class="mt-1 text-2xl font-semibold text-black">Choose a structured path</h1>
+            </div>
+            <div class="grid gap-4 lg:grid-cols-2">
+                {% for path in learning_paths %}
+                    <article class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h2 class="text-lg font-semibold text-black">{{ path.title }}</h2>
+                                <p class="mt-2 text-sm leading-6 text-[#5c5c5c]">{{ path.description|default:"A modular learning path with database-driven activities." }}</p>
+                            </div>
+                            {% if path.is_published %}
+                                <span class="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold text-[#107c41]">Published</span>
+                            {% else %}
+                                <span class="rounded-full bg-[#fff7ed] px-3 py-1 text-xs font-semibold text-[#c43e1c]">Draft</span>
+                            {% endif %}
+                        </div>
+                        <div class="mt-5 flex flex-wrap items-center gap-2 text-sm text-[#424242]">
+                            <span class="rounded-full bg-[#f2f2f2] px-3 py-1">{{ path.modules.count }} modules</span>
+                        </div>
+                        <div class="mt-5 flex flex-wrap gap-3">
+                            {% if path.id in enrolled_ids %}
+                                <a class="rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" href="{% url 'module_list' path.slug %}">Open modules</a>
+                            {% else %}
+                                <form action="{% url 'enroll_learning_path' path.slug %}" method="post">
+                                    {% csrf_token %}
+                                    <button class="rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" type="submit">Enroll</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </article>
+                {% empty %}
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm">
+                        <h2 class="font-semibold text-black">No learning paths yet</h2>
+                        <p class="mt-2 text-sm text-[#5c5c5c]">Create learning path records in Django admin to publish content here.</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

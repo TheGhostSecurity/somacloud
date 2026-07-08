@@ -1,0 +1,41 @@
+from django.urls import path
+from django.contrib.auth import views as auth_views
+
+from . import views
+
+urlpatterns = [
+    path("", views.home, name="home"),
+    path("admin/", views.control_panel, name="control_panel"),
+    path("admin/users/create/", views.create_user, name="create_user"),
+    path("admin/users/<int:user_id>/role/", views.update_user_role, name="update_user_role"),
+    path("admin/users/<int:user_id>/status/", views.toggle_user_status, name="toggle_user_status"),
+    path("admin/users/<int:user_id>/delete/", views.delete_user, name="delete_user"),
+    path("login/", auth_views.LoginView.as_view(template_name="login.html"), name="login"),
+    path("students/signup/", views.signup, name="student_signup"),
+    path("signup/", views.signup, name="signup"),
+    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("dashboard/", views.dashboard, name="dashboard"),
+    path("instructor-dashboard/", views.instructor_dashboard, name="instructor_dashboard"),
+    path("instructor/resource-profiles/", views.instructor_resource_profiles, name="instructor_resource_profiles"),
+    path("instructor/resource-profiles/create/", views.instructor_resource_profile_create, name="instructor_resource_profile_create"),
+    path("instructor/resource-profiles/<int:profile_id>/edit/", views.instructor_resource_profile_edit, name="instructor_resource_profile_edit"),
+    path("instructor/resource-profiles/<int:profile_id>/delete/", views.instructor_resource_profile_delete, name="instructor_resource_profile_delete"),
+    path("instructor/labs/create/", views.instructor_lab_create, name="instructor_lab_create"),
+    path("instructor/labs/<int:lab_id>/edit/", views.instructor_lab_edit, name="instructor_lab_edit"),
+    path("instructor/labs/<int:lab_id>/toggle/", views.instructor_lab_toggle, name="instructor_lab_toggle"),
+    path("instructor/labs/<int:lab_id>/delete/", views.instructor_lab_delete, name="instructor_lab_delete"),
+    path("services/<int:service_id>/flag/", views.fetch_service_flag, name="fetch_service_flag"),
+    path("user-dashboard/", views.user_dashboard, name="user_dashboard"),
+    path("student/profile-image/", views.update_student_profile_image, name="update_student_profile_image"),
+    path("labs/", views.student_labs, name="student_labs"),
+    path("labs/<int:lab_id>/enroll/", views.student_enroll_lab, name="student_enroll_lab"),
+    path("labs/<int:lab_id>/", views.student_lab_detail, name="student_lab_detail"),
+    path("labs/<int:lab_id>/complete-theory/", views.student_complete_theory, name="student_complete_theory"),
+    path("labs/<int:lab_id>/submit-flag/", views.submit_flag, name="submit_flag"),
+    path("labs/<int:lab_id>/launch-sandbox/", views.launch_sandbox, name="launch_sandbox"),
+    path("sandbox/<int:session_id>/", views.student_sandbox_view, name="student_sandbox_view"),
+    path("sandbox/<int:session_id>/stop/", views.stop_sandbox_session, name="stop_sandbox_session"),
+    path("sandbox/<int:session_id>/status/", views.sandbox_session_status, name="sandbox_session_status"),
+    path("progress/", views.progress_overview, name="progress_overview"),
+    path("profile/", views.student_profile, name="student_profile"),
+]

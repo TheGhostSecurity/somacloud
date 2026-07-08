@@ -1,0 +1,166 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | SomaCloud Admin{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    :root {
+        --primary: #0067c0;
+        --secondary: #002b3f;
+        --accent: #37a5ff;
+        --primary-fg: #ffffff;
+        --body-fg: #1f1f1f;
+        --body-bg: #f7f7f7;
+        --body-quiet-color: #5c5c5c;
+        --body-loud-color: #000000;
+        --header-color: #1f1f1f;
+        --header-branding-color: #000000;
+        --header-bg: #ffffff;
+        --header-link-color: #424242;
+        --breadcrumbs-bg: #f7f7f7;
+        --breadcrumbs-fg: #424242;
+        --link-fg: #0067c0;
+        --link-hover-color: #005a9e;
+        --hairline-color: #e5e5e5;
+        --border-color: #d6d6d6;
+        --selected-row: #eaf4ff;
+        --button-bg: #0067c0;
+        --button-hover-bg: #005a9e;
+        --default-button-bg: #002b3f;
+        --default-button-hover-bg: #001f2e;
+    }
+
+    body {
+        font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #f7f7f7;
+    }
+
+    #header {
+        min-height: 64px;
+        border-bottom: 1px solid #e5e5e5;
+        box-shadow: none;
+    }
+
+    #branding h1,
+    #branding h1 a:link,
+    #branding h1 a:visited {
+        color: #000;
+        font-size: 18px;
+        font-weight: 650;
+    }
+
+    #branding h1::before {
+        content: "";
+        display: inline-block;
+        width: 38px;
+        height: 26px;
+        margin-right: 12px;
+        vertical-align: -7px;
+        border-radius: 999px;
+        background:
+            radial-gradient(circle at 65% 45%, #37a5ff 0 35%, transparent 36%),
+            radial-gradient(circle at 45% 45%, #54b6ff 0 40%, transparent 41%),
+            linear-gradient(135deg, #0078d4, #005a9e);
+    }
+
+    #user-tools {
+        color: #424242;
+        font-size: 13px;
+    }
+
+    #user-tools a {
+        border-bottom: 0;
+        color: #0067c0;
+        font-weight: 600;
+    }
+
+    div.breadcrumbs {
+        border-bottom: 1px solid #e5e5e5;
+        color: #424242;
+        font-size: 13px;
+        padding: 14px 40px;
+    }
+
+    #content {
+        padding: 28px 40px;
+    }
+
+    .module {
+        overflow: hidden;
+        border: 1px solid #e0e0e0;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .module h2,
+    .module caption,
+    .inline-group h2 {
+        background: #fff;
+        color: #1f1f1f;
+        font-size: 14px;
+        font-weight: 650;
+        letter-spacing: 0;
+        border-bottom: 1px solid #ededed;
+    }
+
+    table {
+        border-collapse: collapse;
+    }
+
+    th,
+    td {
+        border-bottom: 1px solid #ededed;
+        padding: 13px 16px;
+    }
+
+    tr:hover {
+        background: #fafafa;
+    }
+
+    .button,
+    input[type=submit],
+    input[type=button],
+    .submit-row input,
+    a.button {
+        border-radius: 6px;
+        font-weight: 650;
+        padding: 9px 14px;
+    }
+
+    input,
+    select,
+    textarea {
+        border-color: #d6d6d6;
+        border-radius: 6px;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+        border-color: #0067c0;
+        box-shadow: 0 0 0 2px #b7d8ff;
+        outline: none;
+    }
+
+    .object-tools a:link,
+    .object-tools a:visited {
+        border-radius: 999px;
+        background: #3346b8;
+        font-weight: 650;
+    }
+
+    .login #container {
+        border: 1px solid #e0e0e0;
+        border-radius: 16px;
+        box-shadow: 0 24px 60px rgba(0, 103, 192, 0.12);
+    }
+</style>
+{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">SomaCloud Admin</a></h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

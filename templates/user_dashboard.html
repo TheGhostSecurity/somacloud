@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load markdown_extras %}
+
+{% block body_class %}bg-[#f7f7f7] text-[#1f1f1f] antialiased{% endblock %}
+{% block header %}{% endblock %}
+{% block main_class %}min-h-screen bg-[#f7f7f7]{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen flex-col">
+    {% include "partials/dashboard_header.html" %}
+
+    <div class="flex min-h-0 flex-1">
+        {% include "partials/dashboard_sidebar.html" %}
+
+        <section class="min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
+            <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-[#0067c0]">Student Dashboard</p>
+                    <h1 class="mt-1 text-2xl font-semibold text-black">Welcome back, {{ request.user.first_name|default:request.user.username }}</h1>
+                </div>
+                {% if next_lab %}
+                    <a class="inline-flex items-center gap-2 rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_lab_detail' next_lab.id %}">
+                        Continue
+                        <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                    </a>
+                {% endif %}
+            </div>
+
+            <div class="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-[#5c5c5c]">Enrolled labs</p>
+                    <p class="mt-3 text-3xl font-semibold text-black">{{ enrolled_labs_count }}</p>
+                </div>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-[#5c5c5c]">Completed</p>
+                    <p class="mt-3 text-3xl font-semibold text-black">{{ completed_labs }}</p>
+                </div>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-[#5c5c5c]">Phases</p>
+                    <p class="mt-3 text-3xl font-semibold text-black">{{ enrolled_labs|length }}</p>
+                </div>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-[#5c5c5c]">Next step</p>
+                    <p class="mt-3 text-3xl font-semibold text-black">{% if next_lab %}Ready{% else %}---{% endif %}</p>
+                </div>
+            </div>
+
+            {% if next_lab %}
+                <section class="mb-7 overflow-hidden rounded-xl border border-[#e0e0e0] bg-white shadow-sm">
+                    <div class="grid gap-5 p-5 lg:grid-cols-[1fr_280px] lg:items-center">
+                        <div>
+                            <p class="text-sm font-semibold text-[#0067c0]">Next lab</p>
+                            <h2 class="mt-2 text-xl font-semibold text-black">{{ next_lab.title }}</h2>
+                            <p class="mt-1 text-sm text-[#0067c0]">{{ next_lab.hack_phase.name }}</p>
+                            <p class="mt-2 max-w-2xl text-sm leading-6 text-[#424242]">{{ next_lab.summary|markdown|default:"Continue your current lab." }}</p>
+                        </div>
+                        <div class="rounded-lg bg-[#f7f7f7] p-4">
+                            <p class="text-xs font-semibold text-[#5c5c5c]">Resource profile</p>
+                            <p class="mt-2 font-semibold text-black">{{ next_lab.resource_profile.name }}</p>
+                            <p class="mt-1 text-sm text-[#424242]">{{ next_lab.resource_profile.cpu_count }} CPU &middot; {{ next_lab.resource_profile.memory_mb }} MB RAM &middot; {{ next_lab.resource_profile.time_limit_minutes }} min</p>
+                        </div>
+                    </div>
+                </section>
+            {% endif %}
+
+            <div class="grid gap-6">
+                <section>
+                    <div class="mb-3 flex items-center justify-between">
+                        <h2 class="text-base font-semibold text-[#424242]">Enrolled labs</h2>
+                        <a class="text-sm font-semibold text-[#0067c0]" href="{% url 'student_labs' %}">Browse all</a>
+                    </div>
+                    <div class="grid gap-3 lg:grid-cols-2">
+                        {% for enrollment in enrolled_labs %}
+                            {% with lab=enrollment.lab %}
+                                <a class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm hover:border-[#c8c8c8] hover:shadow-md" href="{% url 'student_lab_detail' lab.id %}">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div>
+                                            <h3 class="font-semibold text-black">{{ lab.title }}</h3>
+                                            <p class="mt-1 text-xs font-semibold text-[#0067c0]">{{ lab.hack_phase.name }}</p>
+                                            <p class="mt-2 line-clamp-2 text-sm leading-6 text-[#5c5c5c]">{{ lab.summary|markdown_inline|default:"Hands-on cyber security lab" }}</p>
+                                        </div>
+                                        <span class="shrink-0 rounded-full bg-[#eaf4ff] px-3 py-1 text-xs font-semibold text-[#0067c0]">{{ lab.resource_profile.name }}</span>
+                                    </div>
+                                    <div class="mt-3 flex flex-wrap gap-1.5">
+                                        {% for tool in lab.tools.all|slice:":3" %}
+                                            <span class="rounded-full bg-[#f2f2f2] px-2 py-0.5 text-xs text-[#424242]">{{ tool.name }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </a>
+                            {% endwith %}
+                        {% empty %}
+                            <div class="rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm">
+                                <h3 class="font-semibold text-black">No enrolled labs yet</h3>
+                                <p class="mt-2 text-sm leading-6 text-[#5c5c5c]">Browse cyber security labs by hacking phase and enroll to start.</p>
+                                <a class="mt-4 inline-flex rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_labs' %}">Browse labs</a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

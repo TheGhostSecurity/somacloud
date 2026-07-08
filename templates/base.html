@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{% block meta_description %}SomaCloud is a secure cloud platform for cybersecurity learning, virtual labs, and classroom management.{% endblock %}">
+    <title>{% block title %}SomaCloud{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style>html{zoom:80%}</style>
+</head>
+<body class="{% block body_class %}bg-slate-50 text-slate-900{% endblock %}">
+    {% block header %}
+    <header class="border-b border-slate-200 bg-white">
+        <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+            <a class="text-sm font-semibold tracking-wide text-slate-950" href="{% url 'home' %}">SomaCloud</a>
+            {% if user.is_authenticated %}
+                <div class="flex items-center gap-3">
+                    <a class="rounded-full px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950" href="{% url 'dashboard' %}">Dashboard</a>
+                    <form action="{% url 'logout' %}" method="post">
+                        {% csrf_token %}
+                        <button class="rounded-full px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950" type="submit">Logout</button>
+                    </form>
+                </div>
+            {% else %}
+                <div class="flex items-center gap-3">
+                    <a class="rounded-full px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950" href="{% url 'login' %}">Login</a>
+                    <a class="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500" href="{% url 'signup' %}">Sign Up</a>
+                </div>
+            {% endif %}
+        </nav>
+    </header>
+    {% endblock %}
+
+    {% if messages %}
+        <ul class="mx-auto mt-4 max-w-6xl space-y-2 px-4">
+            {% for message in messages %}
+                <li class="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <main class="{% block main_class %}mx-auto max-w-6xl px-4 py-8{% endblock %}">
+        {% block content %}{% endblock %}
+    </main>
+    <script>
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

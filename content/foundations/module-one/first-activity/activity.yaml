@@ -1,0 +1,8 @@
+title: First Activity
+summary: A sample six-stage activity imported from the content directory.
+order: 1
+is_published: true
+resource_profile: Light
+resource_cpu: 1
+resource_memory_mb: 256
+resource_time_limit_minutes: 5

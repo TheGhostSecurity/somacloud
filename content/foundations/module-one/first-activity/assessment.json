@@ -1,0 +1,11 @@
+{
+  "title": "Assessment",
+  "instructions": "Submit your answers and evidence for instructor review.",
+  "passing_score": 70,
+  "questions": [
+    {
+      "prompt": "What was the most important observation from this activity?",
+      "type": "short_answer"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+<aside class="hidden w-[276px] shrink-0 overflow-y-auto border-r border-[#e5e5e5] bg-[#f7f7f7] px-3 py-6 md:block">
+    <p class="mb-1 truncate px-2 text-sm font-semibold text-black">{{ request.user.username|default:"SomaCloud" }}</p>
+    <p class="mb-3 truncate px-2 text-xs text-[#5c5c5c]">{{ user_role_label|default:"Student" }}</p>
+    <nav class="space-y-1 text-sm">
+        <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'dashboard' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'dashboard' %}">
+            <i data-lucide="layout-dashboard" class="h-5 w-5 {% if active_nav == 'dashboard' %}text-[#0067c0]{% endif %}"></i>
+            Dashboard
+        </a>
+        {% if user_role_label == "Instructor" %}
+            <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'labs' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'instructor_dashboard' %}">
+                <i data-lucide="flask-conical" class="h-5 w-5 {% if active_nav == 'labs' %}text-[#0067c0]{% endif %}"></i>
+                Lab Management
+            </a>
+            <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'resources' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'instructor_resource_profiles' %}">
+                <i data-lucide="server" class="h-5 w-5 {% if active_nav == 'resources' %}text-[#0067c0]{% endif %}"></i>
+                Resource Profiles
+            </a>
+        {% endif %}
+        <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'labs' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'student_labs' %}">
+            <i data-lucide="flask-conical" class="h-5 w-5 {% if active_nav == 'labs' %}text-[#0067c0]{% endif %}"></i>
+            {% if user_role_label == "Instructor" %}Lab Library{% else %}Lab Library{% endif %}
+        </a>
+        <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'progress' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'progress_overview' %}">
+            <i data-lucide="activity" class="h-5 w-5 {% if active_nav == 'progress' %}text-[#0067c0]{% endif %}"></i>
+            {% if user_role_label == "Instructor" %}Learner Progress{% else %}Progress{% endif %}
+        </a>
+        <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'profile' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'student_profile' %}">
+            <i data-lucide="user-round" class="h-5 w-5 {% if active_nav == 'profile' %}text-[#0067c0]{% endif %}"></i>
+            Profile
+        </a>
+        {% if request.user.is_staff or request.user.is_superuser %}
+            <a class="flex items-center gap-3 rounded-md px-3 py-2 text-[#424242] hover:bg-white" href="{% url 'control_panel' %}">
+                <i data-lucide="shield" class="h-5 w-5"></i>
+                Administration
+            </a>
+        {% endif %}
+    </nav>
+</aside>

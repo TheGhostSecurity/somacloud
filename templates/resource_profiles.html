@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block body_class %}bg-[#f7f7f7] text-[#1f1f1f] antialiased{% endblock %}
+{% block header %}{% endblock %}
+{% block main_class %}min-h-screen bg-[#f7f7f7]{% endblock %}
+{% block content %}
+<div class="flex min-h-screen flex-col">
+    {% include "partials/dashboard_header.html" %}
+    <div class="flex min-h-0 flex-1">
+        {% include "partials/dashboard_sidebar.html" %}
+        <section class="min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
+            <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-[#0067c0]">Instructor</p>
+                    <h1 class="mt-1 text-2xl font-semibold text-black">Resource Profiles</h1>
+                </div>
+                <a class="inline-flex items-center gap-2 rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" href="{% url 'instructor_resource_profile_create' %}">
+                    <i data-lucide="plus" class="h-4 w-4"></i>
+                    Create Profile
+                </a>
+            </div>
+            <div class="overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
+                <div class="border-b border-[#ededed] px-5 py-4">
+                    <h2 class="font-semibold text-black">All Profiles</h2>
+                    <p class="text-sm text-[#5c5c5c]">CPU, memory, and time limits for sandbox environments.</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[700px] text-left text-sm">
+                        <thead class="border-b border-[#ededed] text-[#424242]">
+                            <tr>
+                                <th class="px-6 py-4 font-semibold">Name</th>
+                                <th class="px-6 py-4 font-semibold">CPU</th>
+                                <th class="px-6 py-4 font-semibold">Memory</th>
+                                <th class="px-6 py-4 font-semibold">Time Limit</th>
+                                <th class="px-6 py-4 font-semibold">Description</th>
+                                <th class="px-6 py-4 font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#ededed]">
+                            {% for p in profiles %}
+                                <tr class="hover:bg-[#fafafa]">
+                                    <td class="px-6 py-4 font-semibold text-black">{{ p.name }}</td>
+                                    <td class="px-6 py-4 text-[#424242]">{{ p.cpu_count }} core{{ p.cpu_count|pluralize }}</td>
+                                    <td class="px-6 py-4 text-[#424242]">{{ p.memory_mb }} MB</td>
+                                    <td class="px-6 py-4 text-[#424242]">{{ p.time_limit_minutes }} min</td>
+                                    <td class="px-6 py-4 text-[#5c5c5c]">{{ p.description|default:"—" }}</td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-2">
+                                            <a class="rounded border border-[#c8c8c8] bg-white px-3 py-1.5 text-xs font-semibold text-[#0067c0] hover:bg-[#f7f7f7]" href="{% url 'instructor_resource_profile_edit' p.id %}">Edit</a>
+                                            <form action="{% url 'instructor_resource_profile_delete' p.id %}" method="post" onsubmit="return confirm('Delete profile &#39;{{ p.name }}&#39;?')">
+                                                {% csrf_token %}
+                                                <button class="rounded border border-[#f3b3a6] bg-white px-3 py-1.5 text-xs font-semibold text-[#c43e1c] hover:bg-[#fff7ed]" type="submit">Delete</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td class="px-6 py-8 text-center text-[#5c5c5c]" colspan="6">
+                                        <p>No resource profiles yet.</p>
+                                        <a class="mt-3 inline-block rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" href="{% url 'instructor_resource_profile_create' %}">Create your first profile</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="mt-4">
+                <a class="inline-flex items-center gap-2 text-sm text-[#0067c0] hover:underline" href="{% url 'instructor_dashboard' %}">&larr; Back to Dashboard</a>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

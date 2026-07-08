@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}SomaCloud | Cyber Range Virtual Labs{% endblock %}
+{% block meta_description %}SomaCloud provides secure cybersecurity virtual labs for students, instructors, and institutions to practice ethical hacking, digital forensics, threat analysis, and security operations.{% endblock %}
+{% block body_class %}bg-white text-[#061526] antialiased{% endblock %}
+{% block header %}{% endblock %}
+{% block main_class %}min-h-screen bg-white{% endblock %}
+
+{% block content %}
+<style>
+    html {
+        scroll-behavior: smooth;
+    }
+
+    @keyframes soma-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes soma-panel-next {
+        from { opacity: 0; transform: translateX(34px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes soma-panel-prev {
+        from { opacity: 0; transform: translateX(-34px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    .soma-float {
+        animation: soma-float 8s ease-in-out infinite;
+    }
+
+    .soma-tab-panel {
+        display: none;
+    }
+
+    .soma-tab-panel.is-active {
+        display: block;
+    }
+
+    .soma-tab-panel.slide-next {
+        animation: soma-panel-next 380ms ease both;
+    }
+
+    .soma-tab-panel.slide-prev {
+        animation: soma-panel-prev 380ms ease both;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .soma-float,
+        .soma-tab-panel.slide-next,
+        .soma-tab-panel.slide-prev {
+            animation: none;
+        }
+    }
+</style>
+
+<header class="sticky top-0 z-40 border-b border-[#d7e5f4] bg-white/90 backdrop-blur-xl">
+    <nav class="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 lg:px-8" aria-label="Primary navigation">
+        <a href="{% url 'home' %}" class="flex items-center gap-3" aria-label="SomaCloud home">
+            <img class="h-10 w-auto object-contain" src="{% static 'images/somacloud-logo-mark.png' %}" alt="" aria-hidden="true">
+            <span class="text-xl font-semibold text-[#061526]">SomaCloud</span>
+        </a>
+
+        <div class="flex items-center gap-3">
+            {% if user.is_authenticated %}
+                <a class="hidden rounded-full px-3 py-2 text-sm font-medium text-[#173b57] hover:bg-[#eaf4ff] sm:inline-flex" href="{% url 'dashboard' %}">Dashboard</a>
+            {% else %}
+                <a class="hidden rounded-full px-3 py-2 text-sm font-medium text-[#173b57] hover:bg-[#eaf4ff] sm:inline-flex" href="{% url 'login' %}">Login</a>
+            {% endif %}
+            <a class="rounded-full bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[#0078d4]/20 transition hover:-translate-y-0.5 hover:bg-[#005a9e]" href="{% url 'signup' %}">Sign Up</a>
+        </div>
+    </nav>
+</header>
+
+<section class="relative isolate overflow-hidden bg-gradient-to-br from-white via-[#f4fbff] to-[#dff3ff]">
+    <div class="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_18%,rgba(55,165,255,0.24),transparent_30%),radial-gradient(circle_at_82%_6%,rgba(0,120,212,0.18),transparent_28%)]"></div>
+    <div class="absolute inset-0 -z-10 opacity-[0.24]" style="background-image: linear-gradient(rgba(0,120,212,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(0,120,212,.14) 1px, transparent 1px); background-size: 42px 42px;"></div>
+
+    <div class="mx-auto grid min-h-[610px] max-w-screen-2xl items-center gap-10 px-5 py-14 lg:grid-cols-[0.92fr_1.08fr] lg:px-12">
+        <div class="relative z-10 max-w-3xl">
+            <p class="inline-flex items-center gap-2 rounded-full border border-[#b7d8ff] bg-white/75 px-4 py-2 text-sm font-semibold text-[#005a9e] shadow-sm backdrop-blur">
+                <i data-lucide="shield-check" class="h-4 w-4"></i>
+                Cloud cyber range for practical education
+            </p>
+            <h1 class="mt-6 text-5xl font-semibold leading-[1.03] tracking-tight text-[#061526] md:text-6xl">
+                Master Cybersecurity Through Real-World Virtual Labs
+            </h1>
+            <p class="mt-6 text-lg leading-8 text-[#173b57]">
+                SomaCloud provides a secure cyber training environment where students, instructors, and organizations practice ethical hacking, digital forensics, threat analysis, and security operations.
+            </p>
+            <div class="mt-8 flex flex-wrap items-center gap-3">
+                {% if user.is_authenticated %}
+                    <a class="rounded-full bg-[#0067c0] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0078d4]/20 transition hover:-translate-y-0.5 hover:bg-[#005a9e]" href="{% url 'dashboard' %}">Start Learning</a>
+                {% else %}
+                    <a class="rounded-full bg-[#0067c0] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0078d4]/20 transition hover:-translate-y-0.5 hover:bg-[#005a9e]" href="{% url 'signup' %}">Start Learning</a>
+                {% endif %}
+                <a class="rounded-full border border-[#b7d8ff] bg-white/75 px-6 py-3 text-sm font-semibold text-[#005a9e] backdrop-blur transition hover:-translate-y-0.5 hover:bg-white" href="#platform" data-open-tab="labs">Explore Cyber Labs</a>
+                <a class="rounded-full border border-[#b7d8ff] bg-white/45 px-6 py-3 text-sm font-semibold text-[#005a9e] transition hover:-translate-y-0.5 hover:bg-white" href="#platform" data-open-tab="institutions">For Institutions</a>
+            </div>
+            <div class="mt-8 grid gap-3 sm:grid-cols-2">
+                <div class="flex items-center gap-3 rounded-2xl border border-[#d7e5f4] bg-white/70 px-4 py-3 shadow-sm backdrop-blur">
+                    <i data-lucide="flask-conical" class="h-5 w-5 text-[#0078d4]"></i>
+                    <span class="text-sm font-semibold">Hands-on Cyber Labs</span>
+                </div>
+                <div class="flex items-center gap-3 rounded-2xl border border-[#d7e5f4] bg-white/70 px-4 py-3 shadow-sm backdrop-blur">
+                    <i data-lucide="lock-keyhole" class="h-5 w-5 text-[#0078d4]"></i>
+                    <span class="text-sm font-semibold">Secure Virtual Environments</span>
+                </div>
+                <div class="flex items-center gap-3 rounded-2xl border border-[#d7e5f4] bg-white/70 px-4 py-3 shadow-sm backdrop-blur">
+                    <i data-lucide="presentation" class="h-5 w-5 text-[#0078d4]"></i>
+                    <span class="text-sm font-semibold">Instructor Management</span>
+                </div>
+                <div class="flex items-center gap-3 rounded-2xl border border-[#d7e5f4] bg-white/70 px-4 py-3 shadow-sm backdrop-blur">
+                    <i data-lucide="activity" class="h-5 w-5 text-[#0078d4]"></i>
+                    <span class="text-sm font-semibold">Progress Tracking</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="soma-float relative">
+            <div class="absolute -left-5 top-8 hidden rounded-2xl border border-[#d7e5f4] bg-white/85 p-4 text-[#061526] shadow-2xl shadow-[#0078d4]/10 backdrop-blur md:block">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#005a9e]">Active VMs</p>
+                <p class="mt-2 text-3xl font-semibold">128</p>
+            </div>
+            <div class="absolute -right-2 bottom-8 hidden rounded-2xl border border-[#d7e5f4] bg-white/85 p-4 text-[#061526] shadow-2xl shadow-[#0078d4]/10 backdrop-blur sm:block">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#005a9e]">Threat Score</p>
+                <div class="mt-3 h-2 w-36 rounded-full bg-[#d7e5f4]">
+                    <div class="h-2 w-[72%] rounded-full bg-[#37a5ff]"></div>
+                </div>
+            </div>
+
+            <div class="overflow-hidden rounded-[2rem] border border-white/80 bg-white/70 p-3 shadow-2xl shadow-[#0078d4]/20 backdrop-blur-xl">
+                <div class="overflow-hidden rounded-[1.5rem] border border-[#d7e5f4] bg-white text-[#061526]">
+                    <div class="flex items-center justify-between border-b border-[#e5eef7] px-5 py-4">
+                        <div class="flex items-center gap-2">
+                            <span class="h-3 w-3 rounded-full bg-[#ef4444]"></span>
+                            <span class="h-3 w-3 rounded-full bg-[#f59e0b]"></span>
+                            <span class="h-3 w-3 rounded-full bg-[#22c55e]"></span>
+                        </div>
+                        <div class="hidden h-8 w-72 items-center rounded-full border border-[#d7e5f4] bg-[#f6faff] px-3 text-xs text-[#64748b] md:flex">
+                            <i data-lucide="search" class="mr-2 h-4 w-4"></i>
+                            Search labs, VMs, evidence
+                        </div>
+                    </div>
+                    <div class="grid min-h-[360px] lg:grid-cols-[168px_1fr]">
+                        <aside class="hidden border-r border-[#e5eef7] bg-[#f6faff] p-4 lg:block">
+                            <div class="mb-5 flex items-center gap-2">
+                                <span class="grid h-9 w-9 place-items-center rounded-xl bg-[#0078d4] text-white">
+                                    <i data-lucide="server" class="h-5 w-5"></i>
+                                </span>
+                                <span class="text-sm font-semibold">Range OS</span>
+                            </div>
+                            <div class="space-y-2 text-xs text-[#64748b]">
+                                <div class="rounded-lg bg-[#eaf4ff] px-3 py-2 font-semibold text-[#005a9e]">Cyber Labs</div>
+                                <div class="rounded-lg px-3 py-2">Virtual Machines</div>
+                                <div class="rounded-lg px-3 py-2">Evidence</div>
+                                <div class="rounded-lg px-3 py-2">Submissions</div>
+                            </div>
+                        </aside>
+                        <div class="p-4">
+                            <div class="mb-4 grid gap-3 sm:grid-cols-3">
+                                <div class="rounded-2xl border border-[#d7e5f4] bg-[#f8fbff] p-4 shadow-sm">
+                                    <i data-lucide="terminal" class="h-5 w-5 text-[#37a5ff]"></i>
+                                    <p class="mt-5 text-sm font-semibold">Kali Lab</p>
+                                    <p class="mt-1 text-xs text-[#64748b]">Running</p>
+                                </div>
+                                <div class="rounded-2xl border border-[#d7e5f4] bg-[#f8fbff] p-4 shadow-sm">
+                                    <i data-lucide="radar" class="h-5 w-5 text-[#37a5ff]"></i>
+                                    <p class="mt-5 text-sm font-semibold">SOC Monitor</p>
+                                    <p class="mt-1 text-xs text-[#64748b]">42 alerts</p>
+                                </div>
+                                <div class="rounded-2xl border border-[#d7e5f4] bg-[#f8fbff] p-4 shadow-sm">
+                                    <i data-lucide="hard-drive" class="h-5 w-5 text-[#37a5ff]"></i>
+                                    <p class="mt-5 text-sm font-semibold">Evidence Store</p>
+                                    <p class="mt-1 text-xs text-[#64748b]">Encrypted</p>
+                                </div>
+                            </div>
+                            <div class="overflow-hidden rounded-2xl border border-[#d7e5f4] bg-[#f8fbff] p-5 shadow-sm">
+                                <div class="mb-5 flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-semibold">Security operations dashboard</p>
+                                        <p class="text-xs text-[#64748b]">Student cohort threat analysis</p>
+                                    </div>
+                                    <span class="rounded-full bg-[#0f5132] px-3 py-1 text-xs font-semibold text-[#bbf7d0]">Live</span>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="h-3 w-[86%] rounded-full bg-[#37a5ff]"></div>
+                                    <div class="h-3 w-[62%] rounded-full bg-[#d7e5f4]"></div>
+                                    <div class="h-3 w-[74%] rounded-full bg-[#d7e5f4]"></div>
+                                    <div class="mt-6 grid grid-cols-8 items-end gap-2">
+                                        <span class="h-12 rounded-t bg-[#0078d4]"></span>
+                                        <span class="h-20 rounded-t bg-[#37a5ff]"></span>
+                                        <span class="h-10 rounded-t bg-[#0078d4]"></span>
+                                        <span class="h-24 rounded-t bg-[#37a5ff]"></span>
+                                        <span class="h-16 rounded-t bg-[#0078d4]"></span>
+                                        <span class="h-28 rounded-t bg-[#37a5ff]"></span>
+                                        <span class="h-12 rounded-t bg-[#0078d4]"></span>
+                                        <span class="h-20 rounded-t bg-[#37a5ff]"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="platform" class="sticky top-[72px] z-30 border-y border-[#d7e5f4] bg-white/95 backdrop-blur-xl">
+    <div class="mx-auto flex max-w-7xl items-center gap-3 overflow-x-auto px-5 py-3 lg:px-8" role="tablist" aria-label="SomaCloud sections">
+        <button class="soma-tab-btn shrink-0 rounded-full bg-[#061526] px-5 py-2.5 text-sm font-semibold text-white" type="button" role="tab" aria-selected="true" aria-controls="panel-overview" id="tab-overview" data-tab="overview">Overview</button>
+        <button class="soma-tab-btn shrink-0 rounded-full bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold text-[#061526] transition hover:bg-[#dbeeff]" type="button" role="tab" aria-selected="false" aria-controls="panel-features" id="tab-features" data-tab="features">Features</button>
+        <button class="soma-tab-btn shrink-0 rounded-full bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold text-[#061526] transition hover:bg-[#dbeeff]" type="button" role="tab" aria-selected="false" aria-controls="panel-workflow" id="tab-workflow" data-tab="workflow">How It Works</button>
+        <button class="soma-tab-btn shrink-0 rounded-full bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold text-[#061526] transition hover:bg-[#dbeeff]" type="button" role="tab" aria-selected="false" aria-controls="panel-paths" id="tab-paths" data-tab="paths">Learning Paths</button>
+        <button class="soma-tab-btn shrink-0 rounded-full bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold text-[#061526] transition hover:bg-[#dbeeff]" type="button" role="tab" aria-selected="false" aria-controls="panel-labs" id="tab-labs" data-tab="labs">Cyber Labs</button>
+        <button class="soma-tab-btn shrink-0 rounded-full bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold text-[#061526] transition hover:bg-[#dbeeff]" type="button" role="tab" aria-selected="false" aria-controls="panel-institutions" id="tab-institutions" data-tab="institutions">Institutions</button>
+        <button class="soma-tab-next ml-auto grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-[#061526] text-[#061526] transition hover:bg-[#eaf4ff]" type="button" aria-label="Next section">
+            <i data-lucide="chevron-right" class="h-5 w-5"></i>
+        </button>
+    </div>
+</section>
+
+<section class="bg-[#fbf8f5] px-5 py-14 lg:px-8">
+    <div class="mx-auto max-w-7xl">
+        <div class="min-h-[480px] overflow-hidden">
+            <article class="soma-tab-panel is-active slide-next" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" data-panel="overview">
+                <div class="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+                    <div>
+                        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#0067c0]">Overview</p>
+                        <h2 class="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-[#061526] md:text-5xl">Practical cybersecurity education without the clutter.</h2>
+                        <p class="mt-6 text-lg leading-8 text-[#334155]">SomaCloud bridges the gap between cybersecurity theory and practical skills by providing realistic cloud-based training environments.</p>
+                        <p class="mt-4 leading-7 text-[#475569]">Students learn by doing, instructors manage labs and performance, and institutions deliver modern cyber range experiences without exposing real infrastructure.</p>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-6 shadow-sm">
+                            <i data-lucide="graduation-cap" class="h-7 w-7 text-[#0078d4]"></i>
+                            <h3 class="mt-5 font-semibold">Students</h3>
+                            <p class="mt-2 text-sm leading-6 text-[#475569]">Build proof of skill through guided labs.</p>
+                        </div>
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-6 shadow-sm">
+                            <i data-lucide="presentation" class="h-7 w-7 text-[#0078d4]"></i>
+                            <h3 class="mt-5 font-semibold">Instructors</h3>
+                            <p class="mt-2 text-sm leading-6 text-[#475569]">Manage classes and review practical work.</p>
+                        </div>
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-6 shadow-sm">
+                            <i data-lucide="building-2" class="h-7 w-7 text-[#0078d4]"></i>
+                            <h3 class="mt-5 font-semibold">Institutions</h3>
+                            <p class="mt-2 text-sm leading-6 text-[#475569]">Run controlled cyber training programs.</p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="soma-tab-panel" id="panel-features" role="tabpanel" aria-labelledby="tab-features" data-panel="features" hidden>
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#0067c0]">Features</p>
+                    <h2 class="mt-4 text-4xl font-semibold tracking-tight text-[#061526] md:text-5xl">Everything needed for applied cyber training.</h2>
+                    <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-5 shadow-sm"><i data-lucide="flask-conical" class="h-6 w-6 text-[#0078d4]"></i><h3 class="mt-5 font-semibold">Cyber Labs</h3><p class="mt-2 text-sm leading-6 text-[#475569]">Practice penetration testing, vulnerability assessment, and security challenges.</p></div>
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-5 shadow-sm"><i data-lucide="monitor" class="h-6 w-6 text-[#0078d4]"></i><h3 class="mt-5 font-semibold">Secure Workspace</h3><p class="mt-2 text-sm leading-6 text-[#475569]">Access isolated virtual environments and cybersecurity tools.</p></div>
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-5 shadow-sm"><i data-lucide="users" class="h-6 w-6 text-[#0078d4]"></i><h3 class="mt-5 font-semibold">Student Management</h3><p class="mt-2 text-sm leading-6 text-[#475569]">Track assignments, progress, and practical performance.</p></div>
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-5 shadow-sm"><i data-lucide="panel-top" class="h-6 w-6 text-[#0078d4]"></i><h3 class="mt-5 font-semibold">Instructor Portal</h3><p class="mt-2 text-sm leading-6 text-[#475569]">Create labs, manage classes, and evaluate learners.</p></div>
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-5 shadow-sm"><i data-lucide="database" class="h-6 w-6 text-[#0078d4]"></i><h3 class="mt-5 font-semibold">Digital Evidence Storage</h3><p class="mt-2 text-sm leading-6 text-[#475569]">Securely store forensic files, reports, and investigation data.</p></div>
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-5 shadow-sm"><i data-lucide="bar-chart-3" class="h-6 w-6 text-[#0078d4]"></i><h3 class="mt-5 font-semibold">Learning Analytics</h3><p class="mt-2 text-sm leading-6 text-[#475569]">Monitor skills development and performance.</p></div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="soma-tab-panel" id="panel-workflow" role="tabpanel" aria-labelledby="tab-workflow" data-panel="workflow" hidden>
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#0067c0]">How SomaCloud Works</p>
+                    <h2 class="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-[#061526] md:text-5xl">From account to capability in four steps.</h2>
+                    <div class="relative mt-10 grid gap-5 md:grid-cols-4">
+                        <div class="absolute left-[12%] right-[12%] top-8 hidden h-px bg-gradient-to-r from-[#0078d4] via-[#37a5ff] to-[#0078d4] md:block"></div>
+                        <div class="relative rounded-3xl border border-[#d7e5f4] bg-white p-6 text-center shadow-sm"><span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#061526] text-white"><i data-lucide="user-plus" class="h-7 w-7"></i></span><h3 class="mt-6 font-semibold">Create Account</h3></div>
+                        <div class="relative rounded-3xl border border-[#d7e5f4] bg-white p-6 text-center shadow-sm"><span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#061526] text-white"><i data-lucide="network" class="h-7 w-7"></i></span><h3 class="mt-6 font-semibold">Join Cyber Labs</h3></div>
+                        <div class="relative rounded-3xl border border-[#d7e5f4] bg-white p-6 text-center shadow-sm"><span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#061526] text-white"><i data-lucide="scan-search" class="h-7 w-7"></i></span><h3 class="mt-6 font-semibold">Solve Practical Challenges</h3></div>
+                        <div class="relative rounded-3xl border border-[#d7e5f4] bg-white p-6 text-center shadow-sm"><span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#061526] text-white"><i data-lucide="badge-check" class="h-7 w-7"></i></span><h3 class="mt-6 font-semibold">Build Cybersecurity Skills</h3></div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="soma-tab-panel" id="panel-paths" role="tabpanel" aria-labelledby="tab-paths" data-panel="paths" hidden>
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#0067c0]">Cyber Learning Paths</p>
+                    <h2 class="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-[#061526] md:text-5xl">Structured paths for real security roles.</h2>
+                    <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div class="rounded-3xl bg-[#061526] p-6 text-white"><i data-lucide="route" class="h-8 w-8 text-[#37a5ff]"></i><h3 class="mt-6 text-xl font-semibold">Beginner</h3><p class="mt-4 text-sm leading-7 text-[#d7e9f7]">Networking Fundamentals<br>Linux Basics<br>Security Principles</p></div>
+                        <div class="rounded-3xl bg-[#061526] p-6 text-white"><i data-lucide="bug" class="h-8 w-8 text-[#37a5ff]"></i><h3 class="mt-6 text-xl font-semibold">Ethical Hacker</h3><p class="mt-4 text-sm leading-7 text-[#d7e9f7]">Reconnaissance<br>Web Security<br>Exploitation</p></div>
+                        <div class="rounded-3xl bg-[#061526] p-6 text-white"><i data-lucide="fingerprint" class="h-8 w-8 text-[#37a5ff]"></i><h3 class="mt-6 text-xl font-semibold">Digital Forensics</h3><p class="mt-4 text-sm leading-7 text-[#d7e9f7]">Evidence Collection<br>File Analysis<br>Investigation</p></div>
+                        <div class="rounded-3xl bg-[#061526] p-6 text-white"><i data-lucide="radar" class="h-8 w-8 text-[#37a5ff]"></i><h3 class="mt-6 text-xl font-semibold">SOC Analyst</h3><p class="mt-4 text-sm leading-7 text-[#d7e9f7]">Threat Detection<br>Log Analysis<br>Incident Response</p></div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="soma-tab-panel" id="panel-labs" role="tabpanel" aria-labelledby="tab-labs" data-panel="labs" hidden>
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#0067c0]">Cyber Lab Showcase</p>
+                    <h2 class="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-[#061526] md:text-5xl">Realistic labs in compact dashboard cards.</h2>
+                    <div class="mt-8 grid gap-4 lg:grid-cols-4">
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-5 shadow-sm"><div class="rounded-2xl bg-[#061526] p-5 text-white"><h3 class="font-semibold">Kali Linux Lab</h3><p class="mt-8 text-sm text-[#d7e9f7]">24 tools<br>8 GB VM<br>12 tasks</p></div></div>
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-5 shadow-sm"><div class="rounded-2xl bg-[#061526] p-5 text-white"><h3 class="font-semibold">Web Exploitation Lab</h3><div class="mt-8 space-y-3"><div class="h-3 w-[88%] rounded-full bg-[#37a5ff]"></div><div class="h-3 w-[64%] rounded-full bg-white/20"></div><div class="h-3 w-[72%] rounded-full bg-white/20"></div></div></div></div>
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-5 shadow-sm"><div class="rounded-2xl bg-[#061526] p-5 text-white"><h3 class="font-semibold">Digital Forensics Lab</h3><p class="mt-8 text-sm text-[#d7e9f7]">Disk image<br>Memory dump<br>Case notes</p></div></div>
+                        <div class="rounded-3xl border border-[#d7e5f4] bg-white p-5 shadow-sm"><div class="rounded-2xl bg-[#061526] p-5 text-white"><h3 class="font-semibold">SOC Monitoring Lab</h3><div class="mt-8 grid grid-cols-6 items-end gap-2"><span class="h-10 rounded-t bg-[#0078d4]"></span><span class="h-16 rounded-t bg-[#37a5ff]"></span><span class="h-12 rounded-t bg-[#0078d4]"></span><span class="h-24 rounded-t bg-[#37a5ff]"></span><span class="h-14 rounded-t bg-[#0078d4]"></span><span class="h-20 rounded-t bg-[#37a5ff]"></span></div></div></div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="soma-tab-panel" id="panel-institutions" role="tabpanel" aria-labelledby="tab-institutions" data-panel="institutions" hidden>
+                <div class="grid gap-6 lg:grid-cols-[1fr_1fr]">
+                    <div class="rounded-3xl border border-[#d7e5f4] bg-white p-8 shadow-sm">
+                        <i data-lucide="target" class="h-8 w-8 text-[#0078d4]"></i>
+                        <h2 class="mt-6 text-3xl font-semibold text-[#061526]">Mission</h2>
+                        <p class="mt-4 text-lg leading-8 text-[#475569]">To make cybersecurity education practical, accessible, and effective through realistic training environments.</p>
+                    </div>
+                    <div class="rounded-3xl border border-[#d7e5f4] bg-white p-8 shadow-sm">
+                        <i data-lucide="telescope" class="h-8 w-8 text-[#0078d4]"></i>
+                        <h2 class="mt-6 text-3xl font-semibold text-[#061526]">Vision</h2>
+                        <p class="mt-4 text-lg leading-8 text-[#475569]">To develop the next generation of cybersecurity professionals through hands-on learning.</p>
+                    </div>
+                    <div class="rounded-[2rem] bg-[#061526] p-8 text-white lg:col-span-2">
+                        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                                <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#37a5ff]">Get Started</p>
+                                <h2 class="mt-3 text-4xl font-semibold tracking-tight">Ready to Build Real Cyber Skills?</h2>
+                            </div>
+                            <div class="flex flex-wrap gap-3">
+                                <a class="rounded-full bg-[#37a5ff] px-6 py-3 text-sm font-semibold text-[#061526] transition hover:-translate-y-0.5 hover:bg-white" href="{% url 'signup' %}">Join SomaCloud</a>
+                                <a class="rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/15" href="{% url 'login' %}">Create a Lab</a>
+                                <a class="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10" href="mailto:support@somacloud.local">Contact Us</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+
+<script>
+    (() => {
+        const tabs = Array.from(document.querySelectorAll(".soma-tab-btn"));
+        const panels = Array.from(document.querySelectorAll(".soma-tab-panel"));
+        const nextButton = document.querySelector(".soma-tab-next");
+        let activeIndex = 0;
+
+        function activateTab(nextIndex) {
+            if (nextIndex === activeIndex || nextIndex < 0 || nextIndex >= tabs.length) {
+                return;
+            }
+
+            const directionClass = nextIndex > activeIndex ? "slide-next" : "slide-prev";
+
+            tabs.forEach((tab, index) => {
+                const isActive = index === nextIndex;
+                tab.setAttribute("aria-selected", isActive ? "true" : "false");
+                tab.classList.toggle("bg-[#061526]", isActive);
+                tab.classList.toggle("text-white", isActive);
+                tab.classList.toggle("bg-[#e8e8e8]", !isActive);
+                tab.classList.toggle("text-[#061526]", !isActive);
+            });
+
+            panels.forEach((panel, index) => {
+                const isActive = index === nextIndex;
+                panel.hidden = !isActive;
+                panel.classList.toggle("is-active", isActive);
+                panel.classList.remove("slide-next", "slide-prev");
+                if (isActive) {
+                    panel.classList.add(directionClass);
+                }
+            });
+
+            activeIndex = nextIndex;
+        }
+
+        tabs.forEach((tab, index) => {
+            tab.addEventListener("click", () => activateTab(index));
+        });
+
+        document.querySelectorAll("[data-open-tab]").forEach((trigger) => {
+            trigger.addEventListener("click", () => {
+                const tabName = trigger.getAttribute("data-open-tab");
+                const nextIndex = tabs.findIndex((tab) => tab.dataset.tab === tabName);
+                if (nextIndex >= 0) {
+                    activateTab(nextIndex);
+                }
+            });
+        });
+
+        if (nextButton) {
+            nextButton.addEventListener("click", () => {
+                activateTab((activeIndex + 1) % tabs.length);
+            });
+        }
+    })();
+</script>
+{% endblock %}
