@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load markdown_extras %}
 
-{% block body_class %}bg-[#f7f7f7] text-[#1f1f1f] antialiased{% endblock %}
+{% block body_class %}bg-white text-[#1f1f1f] antialiased{% endblock %}
 {% block header %}{% endblock %}
-{% block main_class %}min-h-screen bg-[#f7f7f7] bg-dot-grid{% endblock %}
+{% block main_class %}min-h-screen bg-white{% endblock %}
 
 {% block content %}
 <div class="flex min-h-screen flex-col">
@@ -11,7 +11,7 @@
     <div class="flex min-h-0 flex-1">
         {% include "partials/dashboard_sidebar.html" %}
 
-        <section class="blob-bg min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
+        <section class="min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
             {% if active_session and active_session.expires_at %}
                 {% with remaining=active_session.expires_at|timeuntil %}
                     {% if active_session.expires_at > now %}
@@ -73,22 +73,22 @@
                 <div class="stat-card rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Enrolled labs</p>
                     <p class="mt-2 text-2xl font-semibold text-black stat-glow">{{ enrolled_labs_count }}</p>
-                    <svg class="absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <svg class="pointer-events-none absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 </div>
                 <div class="stat-card stat-card-green rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Completed</p>
                     <p class="mt-2 text-2xl font-semibold text-black stat-glow">{{ completed_labs }}</p>
-                    <svg class="absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <svg class="pointer-events-none absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
                 <div class="stat-card stat-card-amber rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">This week</p>
                     <p class="mt-2 text-2xl font-semibold text-black stat-glow">{{ labs_this_week }}</p>
-                    <svg class="absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <svg class="pointer-events-none absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 </div>
                 <div class="stat-card stat-card-purple rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Streak</p>
                     <p class="mt-2 text-2xl font-semibold text-black stat-glow">{{ streak }} day{{ streak|pluralize }}</p>
-                    <svg class="absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg>
+                    <svg class="pointer-events-none absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg>
                 </div>
             </div>
 
