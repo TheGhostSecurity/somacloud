@@ -16,8 +16,8 @@
             <span class="text-xs text-[#9ca3af]">Sandbox</span>
         </div>
             <div class="flex items-center gap-4">
-                {% if session.service_ip and session.service_port %}
-                    <span class="text-xs text-[#9ca3af]">Target: {{ session.service_ip }}:{{ session.service_port }}</span>
+                {% if session.service_endpoints %}
+                    <span class="text-xs text-[#9ca3af]">Target{% if session.service_endpoints|length > 1 %}s{% endif %}: {% for target in session.service_endpoints %}{{ target.name }} ({{ target.ip }}:{{ target.container_port }}){% if not forloop.last %}, {% endif %}{% endfor %}</span>
                 {% endif %}
                 <div class="flex items-center gap-2 text-sm">
                 <span id="status-badge" class="rounded-full bg-[#22c55e] px-2 py-0.5 text-xs font-semibold text-white">

@@ -15,28 +15,144 @@
                 <h1 class="mt-1 text-2xl font-semibold text-black">{{ form_title }}</h1>
             </div>
 
-            <div class="mx-auto max-w-3xl rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm">
+            <div class="mx-auto max-w-6xl">
                 <form method="post">
                     {% csrf_token %}
-                    {% for field in form %}
-                        <label class="mb-4 block text-sm font-semibold text-black
-                            {% if field.name == 'challenge_question' or field.name == 'challenge_options' or field.name == 'challenge_answer' %}challenge-field{% endif %}
-                            {% if field.name == 'flag' or field.name == 'flag_hint' %}flag-field{% endif %}
-                        ">
-                            {{ field.label }}
-                            {% if field.help_text %}
-                                <span class="ml-1 text-xs font-normal text-[#5c5c5c]">{{ field.help_text }}</span>
-                            {% endif %}
-                            <span class="mt-1 block">{{ field }}</span>
-                            {% if field.errors %}
-                                <span class="mt-1 block text-xs font-medium text-[#c43e1c]">{{ field.errors|striptags }}</span>
-                            {% endif %}
-                        </label>
-                    {% endfor %}
+
+                    <div class="md:grid md:grid-cols-2 md:gap-6">
+                        <div class="mb-6 rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm md:mb-0">
+                            <div class="mb-4 flex items-center gap-2 border-b border-[#e0e0e0] pb-3">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0067c0] text-white"><i data-lucide="clipboard-pen" class="h-4 w-4"></i></span>
+                                <h2 class="text-lg font-semibold text-black">Basic Information</h2>
+                            </div>
+                            <div class="space-y-4">
+                                {% for field in form %}
+                                    {% if field.name == 'title' or field.name == 'hack_phase' or field.name == 'summary' %}
+                                        <label class="block text-sm font-semibold text-black">
+                                            {{ field.label }}
+                                            {% if field.help_text %}
+                                                <span class="ml-1 text-xs font-normal text-[#5c5c5c]">{{ field.help_text }}</span>
+                                            {% endif %}
+                                            <span class="mt-1 block">{{ field }}</span>
+                                            {% if field.errors %}
+                                                <span class="mt-1 block text-xs font-medium text-[#c43e1c]">{{ field.errors|striptags }}</span>
+                                            {% endif %}
+                                        </label>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-6 rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm md:mb-0">
+                            <div class="mb-4 flex items-center gap-2 border-b border-[#e0e0e0] pb-3">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0067c0] text-white"><i data-lucide="server" class="h-4 w-4"></i></span>
+                                <h2 class="text-lg font-semibold text-black">Environment</h2>
+                            </div>
+                            <div class="space-y-4">
+                                {% for field in form %}
+                                    {% if field.name == 'terminal_container' or field.name == 'service_containers' or field.name == 'resource_profile' %}
+                                        <label class="block text-sm font-semibold text-black">
+                                            {{ field.label }}
+                                            {% if field.help_text %}
+                                                <span class="ml-1 text-xs font-normal text-[#5c5c5c]">{{ field.help_text }}</span>
+                                            {% endif %}
+                                            <span class="mt-1 block">{{ field }}</span>
+                                            {% if field.errors %}
+                                                <span class="mt-1 block text-xs font-medium text-[#c43e1c]">{{ field.errors|striptags }}</span>
+                                            {% endif %}
+                                        </label>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-6 rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm md:mb-0">
+                            <div class="mb-4 flex items-center gap-2 border-b border-[#e0e0e0] pb-3">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0067c0] text-white"><i data-lucide="book-open-text" class="h-4 w-4"></i></span>
+                                <h2 class="text-lg font-semibold text-black">Content</h2>
+                            </div>
+                            <div class="space-y-4">
+                                {% for field in form %}
+                                    {% if field.name == 'theory_content' or field.name == 'notes' %}
+                                        <label class="block text-sm font-semibold text-black">
+                                            <div class="flex items-center justify-between">
+                                                <span>{{ field.label }}
+                                                    {% if field.help_text %}
+                                                        <span class="ml-1 text-xs font-normal text-[#5c5c5c]">{{ field.help_text }}</span>
+                                                    {% endif %}
+                                                </span>
+                                                <button type="button" class="expand-editor-btn ml-2 flex items-center gap-1 rounded-md border border-[#c8c8c8] bg-white px-2 py-1 text-xs font-medium text-[#5c5c5c] hover:bg-[#f7f7f7] hover:text-[#0067c0]" data-target="{{ field.auto_id }}">
+                                                    <i data-lucide="maximize-2" class="h-3 w-3"></i>
+                                                    Expand
+                                                </button>
+                                            </div>
+                                            <span class="mt-1 block">{{ field }}</span>
+                                            {% if field.errors %}
+                                                <span class="mt-1 block text-xs font-medium text-[#c43e1c]">{{ field.errors|striptags }}</span>
+                                            {% endif %}
+                                        </label>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-6 rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm md:mb-0">
+                            <div class="mb-4 flex items-center gap-2 border-b border-[#e0e0e0] pb-3">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0067c0] text-white"><i data-lucide="target" class="h-4 w-4"></i></span>
+                                <h2 class="text-lg font-semibold text-black">Challenge</h2>
+                            </div>
+                            <div class="space-y-4">
+                                {% for field in form %}
+                                    {% if field.name == 'challenge_type' %}
+                                        <label class="block text-sm font-semibold text-black">
+                                            {{ field.label }}
+                                            {% if field.help_text %}
+                                                <span class="ml-1 text-xs font-normal text-[#5c5c5c]">{{ field.help_text }}</span>
+                                            {% endif %}
+                                            <span class="mt-1 block">{{ field }}</span>
+                                            {% if field.errors %}
+                                                <span class="mt-1 block text-xs font-medium text-[#c43e1c]">{{ field.errors|striptags }}</span>
+                                            {% endif %}
+                                        </label>
+                                    {% endif %}
+                                {% endfor %}
+                                {% for field in form %}
+                                    {% if field.name == 'challenge_question' or field.name == 'challenge_options' or field.name == 'challenge_answer' %}
+                                        <label class="challenge-field block text-sm font-semibold text-black">
+                                            {{ field.label }}
+                                            {% if field.help_text %}
+                                                <span class="ml-1 text-xs font-normal text-[#5c5c5c]">{{ field.help_text }}</span>
+                                            {% endif %}
+                                            <span class="mt-1 block">{{ field }}</span>
+                                            {% if field.errors %}
+                                                <span class="mt-1 block text-xs font-medium text-[#c43e1c]">{{ field.errors|striptags }}</span>
+                                            {% endif %}
+                                        </label>
+                                    {% endif %}
+                                {% endfor %}
+                                {% for field in form %}
+                                    {% if field.name == 'flag' or field.name == 'flag_hint' %}
+                                        <label class="flag-field block text-sm font-semibold text-black">
+                                            {{ field.label }}
+                                            {% if field.help_text %}
+                                                <span class="ml-1 text-xs font-normal text-[#5c5c5c]">{{ field.help_text }}</span>
+                                            {% endif %}
+                                            <span class="mt-1 block">{{ field }}</span>
+                                            {% if field.errors %}
+                                                <span class="mt-1 block text-xs font-medium text-[#c43e1c]">{{ field.errors|striptags }}</span>
+                                            {% endif %}
+                                        </label>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
                     {% if form.non_field_errors %}
-                        <div class="mb-4 rounded border border-[#f3b3a6] bg-[#fff7ed] px-3 py-2 text-sm text-[#c43e1c]">{{ form.non_field_errors|striptags }}</div>
+                        <div class="mb-6 rounded border border-[#f3b3a6] bg-[#fff7ed] px-3 py-2 text-sm text-[#c43e1c]">{{ form.non_field_errors|striptags }}</div>
                     {% endif %}
-                    <div class="flex items-center justify-end gap-3 pt-4">
+
+                    <div class="flex items-center justify-end gap-3 rounded-xl border border-[#e0e0e0] bg-white px-6 py-4 shadow-sm">
                         <a class="rounded-md border border-[#c8c8c8] bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] hover:bg-[#f7f7f7]" href="{% url 'instructor_dashboard' %}">Cancel</a>
                         <button class="rounded-md bg-[#0067c0] px-6 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" type="submit">Save Lab</button>
                     </div>
@@ -45,11 +161,87 @@
         </section>
     </div>
 </div>
+
+<div id="editorModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="fixed inset-4 md:inset-6 flex flex-col rounded-xl bg-white shadow-2xl">
+        <div class="flex items-center justify-between border-b border-[#e0e0e0] px-6 py-4">
+            <h3 class="text-lg font-semibold text-black" id="editorModalTitle">Edit Content</h3>
+            <div class="flex items-center gap-2">
+                <button type="button" id="editorModalDone" class="rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]">
+                    <i data-lucide="check" class="mr-1 inline h-4 w-4"></i>Done
+                </button>
+                <button type="button" id="editorModalClose" class="rounded-md border border-[#c8c8c8] bg-white px-3 py-2 text-sm font-semibold text-[#5c5c5c] hover:bg-[#f7f7f7]">
+                    <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+            </div>
+        </div>
+        <div class="flex-1 p-6">
+            <textarea id="editorModalTextarea" class="h-full w-full resize-none rounded-lg border border-[#e0e0e0] bg-white p-4 font-mono text-sm leading-relaxed text-[#1f1f1f] focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100" placeholder="Write in Markdown..."></textarea>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 (function() {
+    var modal = document.getElementById('editorModal');
+    var modalTextarea = document.getElementById('editorModalTextarea');
+    var modalTitle = document.getElementById('editorModalTitle');
+    var doneBtn = document.getElementById('editorModalDone');
+    var closeBtn = document.getElementById('editorModalClose');
+    var activeFieldId = null;
+
+    document.querySelectorAll('.expand-editor-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var targetId = this.getAttribute('data-target');
+            var textarea = document.getElementById(targetId);
+            if (!textarea) return;
+
+            var label = this.closest('label');
+            var fieldLabel = label ? label.querySelector('span > span').textContent.trim() : 'Content';
+            modalTitle.textContent = 'Editing: ' + fieldLabel;
+
+            modalTextarea.value = textarea.value;
+            activeFieldId = targetId;
+            modal.classList.remove('hidden');
+
+            setTimeout(function() {
+                modalTextarea.focus();
+                if (window.lucide) window.lucide.createIcons();
+            }, 100);
+        });
+    });
+
+    function closeEditor() {
+        modal.classList.add('hidden');
+        activeFieldId = null;
+    }
+
+    function saveEditor() {
+        if (activeFieldId) {
+            var textarea = document.getElementById(activeFieldId);
+            if (textarea) textarea.value = modalTextarea.value;
+        }
+        closeEditor();
+    }
+
+    doneBtn.addEventListener('click', saveEditor);
+    closeBtn.addEventListener('click', closeEditor);
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal || e.target.closest('.fixed.inset-0.bg-black\\/60')) {
+            saveEditor();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            saveEditor();
+        }
+    });
+
     var typeField = document.getElementById('{{ form.challenge_type.id_for_label }}');
     var challengeFields = document.querySelectorAll('.challenge-field');
     var flagFields = document.querySelectorAll('.flag-field');
@@ -64,22 +256,6 @@
         toggleChallengeType();
     }
 
-    var serviceField = document.getElementById('{{ form.scenario_service.id_for_label }}');
-    var flagField = document.getElementById('{{ form.flag.id_for_label }}');
-    if (serviceField && flagField) {
-        serviceField.addEventListener('change', function() {
-            var pk = this.value;
-            if (!pk) return;
-            fetch('/services/' + pk + '/flag/')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.flag) {
-                        flagField.value = data.flag;
-                    }
-                })
-                .catch(function(e) { console.error('Flag fetch error:', e); });
-        });
-    }
 })();
 </script>
 {% endblock %}

@@ -1,287 +1,250 @@
-import io
-import json
 import logging
-import tarfile
 import uuid
 from datetime import timedelta
 from urllib.parse import quote
 
 import requests
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from .models import Lab, SandboxSession
+from .models import PortReservation, SandboxSession
 
 logger = logging.getLogger(__name__)
 
 
-def _docker_api(path, method="post", data=None, headers=None, stream=False, timeout=None):
-    url = f"{settings.DOCKER_HOST}{path}"
-    hdrs = {"Content-Type": "application/json"}
-    if headers:
-        hdrs.update(headers)
+def _docker_api(path, method="post", data=None, timeout=None):
+    """Make an authenticated call to Docker's Remote API."""
+    cert_dir = settings.DOCKER_TLS_CERT_PATH
+    kwargs = {
+        "headers": {"Content-Type": "application/json"},
+        "timeout": timeout or settings.DOCKER_API_TIMEOUT,
+    }
+    if settings.DOCKER_TLS_VERIFY:
+        kwargs["verify"] = f"{cert_dir}/{settings.DOCKER_TLS_CA_FILE}"
+        kwargs["cert"] = (
+            f"{cert_dir}/{settings.DOCKER_TLS_CERT_FILE}",
+            f"{cert_dir}/{settings.DOCKER_TLS_KEY_FILE}",
+        )
+    if data is not None:
+        kwargs["json"] = data
     try:
-        kwargs = {"headers": hdrs, "timeout": timeout or 10, "stream": stream}
-        if isinstance(data, dict):
-            kwargs["json"] = data
-        else:
-            kwargs["data"] = data
-        if method == "post":
-            resp = requests.post(url, **kwargs)
-        elif method == "get":
-            resp = requests.get(url, **kwargs)
-        elif method == "delete":
-            resp = requests.delete(url, **kwargs)
-        else:
-            return None
-        resp.raise_for_status()
-        if stream:
-            return resp
-        return resp.json() if resp.content else {}
-    except requests.RequestException as e:
-        logger.error("Docker API error on %s: %s", path, e)
+        response = requests.request(method, f"{settings.DOCKER_HOST}{path}", **kwargs)
+        response.raise_for_status()
+        if not response.content:
+            return {}
+        try:
+            return response.json()
+        except ValueError:
+            # Docker image pulls return newline-delimited progress JSON, not one JSON value.
+            return {}
+    except (requests.RequestException, OSError) as exc:
+        logger.error("Docker API %s %s failed: %s", method.upper(), path, exc)
         return None
+
+
+def _ensure_image(image):
+    encoded = quote(image, safe="")
+    if _docker_api(f"/images/{encoded}/json", method="get") is not None:
+        return True
+    logger.info("Pulling Docker image %s", image)
+    # Image pulls return an NDJSON progress stream; a successful HTTP response is enough,
+    # then verify the image is available locally.
+    if _docker_api(f"/images/create?fromImage={encoded}", method="post", timeout=300) is None:
+        return False
+    return _docker_api(f"/images/{encoded}/json", method="get") is not None
 
 
 def _create_network():
-    name = f"sandbox-{uuid.uuid4().hex[:12]}"
-    result = _docker_api("/networks/create", data={"Name": name, "Driver": "bridge"})
-    if result and "Id" in result:
-        return name, result
-    return name, None
+    name = f"somacloud-{uuid.uuid4().hex[:12]}"
+    result = _docker_api("/networks/create", data={"Name": name, "Driver": "bridge", "Labels": {"somacloud.managed": "true"}})
+    return name if result and result.get("Id") else None
 
 
 def _remove_network(name):
-    _docker_api(f"/networks/{name}", method="delete")
+    if name:
+        _docker_api(f"/networks/{quote(name, safe='')}", method="delete")
 
 
-def _allocate_port():
-    start = settings.DOCKER_SERVICE_PORT_START
-    end = settings.DOCKER_SERVICE_PORT_END
-    used = set(
-        SandboxSession.objects.filter(
-            status__in=[SandboxSession.RUNNING, SandboxSession.PENDING]
-        ).exclude(service_port=None).values_list("service_port", flat=True)
-    )
-    for port in range(start, end + 1):
-        if port not in used:
-            return port
-    logger.error("No available ports in range %s-%s", start, end)
+def _docker_used_ports():
+    containers = _docker_api("/containers/json?all=1", method="get") or []
+    return {
+        port.get("PublicPort")
+        for container in containers
+        for port in container.get("Ports", [])
+        if port.get("PublicPort")
+    }
+
+
+def _reserve_ports(session, count):
+    """Atomically reserve ports in the configured range for one sandbox."""
+    unavailable = _docker_used_ports()
+    reserved = []
+    for port in range(settings.DOCKER_PORT_START, settings.DOCKER_PORT_END + 1):
+        if port in unavailable:
+            continue
+        try:
+            with transaction.atomic():
+                PortReservation.objects.create(port=port, session=session)
+            reserved.append(port)
+            if len(reserved) == count:
+                return reserved
+        except IntegrityError:
+            continue
+    PortReservation.objects.filter(session=session).delete()
+    return []
+
+
+def _release_ports(session):
+    PortReservation.objects.filter(session=session).delete()
+
+
+def _resources(profile, network, port, container_port):
+    port_key = f"{container_port}/tcp"
+    return {
+        "NetworkMode": network,
+        "Memory": profile.memory_mb * 1024 * 1024,
+        "MemorySwap": profile.memory_mb * 1024 * 1024,
+        "NanoCpus": profile.cpu_count * 1_000_000_000,
+        "PortBindings": {port_key: [{"HostPort": str(port)}]},
+    }
+
+
+def _create_container(image, name, network, profile, host_port, container_port, env=None, command=""):
+    port_key = f"{container_port}/tcp"
+    config = {
+        "Image": image,
+        "Env": [f"{key}={value}" for key, value in (env or {}).items()],
+        "ExposedPorts": {port_key: {}},
+        "HostConfig": _resources(profile, network, host_port, container_port),
+        "Labels": {"somacloud.managed": "true"},
+    }
+    if command:
+        config["Cmd"] = command.split()
+    created = _docker_api(f"/containers/create?name={quote(name, safe='')}", data=config)
+    if not created or not created.get("Id"):
+        return None
+    container_id = created["Id"]
+    if _docker_api(f"/containers/{container_id}/start", method="post") is None:
+        _docker_api(f"/containers/{container_id}?force=true", method="delete")
+        return None
+    inspected = _docker_api(f"/containers/{container_id}/json", method="get") or {}
+    ip = inspected.get("NetworkSettings", {}).get("Networks", {}).get(network, {}).get("IPAddress", "")
+    return container_id, ip
+
+
+def _remove_container(container_id):
+    if container_id:
+        _docker_api(f"/containers/{container_id}/stop?t=5", method="post")
+        _docker_api(f"/containers/{container_id}?force=true", method="delete")
+
+
+def _fail(session, container_ids, network):
+    for container_id in container_ids:
+        _remove_container(container_id)
+    _remove_network(network)
+    _release_ports(session)
+    session.status = SandboxSession.ERROR
+    session.save(update_fields=["status"])
     return None
 
 
-def _release_port(session):
-    session.service_port = None
-    session.save(update_fields=["service_port"])
-
-
-def _check_image_exists(tag):
-    encoded = quote(tag, safe='')
-    result = _docker_api(f"/images/{encoded}/json", method="get")
-    return result is not None
-
-
-def _ensure_image(tag):
-    if _check_image_exists(tag):
-        return True
-    logger.info("Pulling image %s ...", tag)
-    encoded = quote(tag, safe='')
-    resp = _docker_api(f"/images/create?fromImage={encoded}", method="post", timeout=300)
-    if resp is None:
-        logger.error("Failed to pull image %s", tag)
-        return False
-    return _check_image_exists(tag)
-
-
-def _build_image_from_files(tag, dockerfile_content, files=None):
-    tar_stream = io.BytesIO()
-    with tarfile.open(fileobj=tar_stream, mode="w") as tar:
-        df_bytes = dockerfile_content.encode("utf-8")
-        info = tarfile.TarInfo(name="Dockerfile")
-        info.size = len(df_bytes)
-        info.mtime = int(timezone.now().timestamp())
-        tar.addfile(info, io.BytesIO(df_bytes))
-
-        for fname, fcontent in (files or {}).items():
-            f_bytes = fcontent.encode("utf-8") if isinstance(fcontent, str) else fcontent
-            info = tarfile.TarInfo(name=fname)
-            info.size = len(f_bytes)
-            info.mtime = int(timezone.now().timestamp())
-            tar.addfile(info, io.BytesIO(f_bytes))
-
-    tar_stream.seek(0)
-
-    resp = _docker_api(
-        f"/build?t={tag}&dockerfile=Dockerfile&rm=true",
-        method="post",
-        data=tar_stream,
-        headers={"Content-Type": "application/x-tar"},
-        stream=True,
-        timeout=120,
-    )
-    if resp is None:
-        return False
-    for line in resp.iter_lines(decode_unicode=True):
-        if line:
-            try:
-                msg = json.loads(line)
-                if "error" in msg:
-                    logger.error("Docker build error: %s", msg["error"])
-                    return False
-            except json.JSONDecodeError:
-                pass
-    return _check_image_exists(tag)
-
-
-def _create_container(image, network, host_config=None, env=None, command=None):
-    env_list = [f"{k}={v}" for k, v in (env or {}).items()]
-    config = {
-        "Image": image,
-        "HostConfig": host_config or {},
-        "AttachStdin": True,
-        "AttachStdout": True,
-        "OpenStdin": True,
-        "Tty": True,
-    }
-    if env_list:
-        config["Env"] = env_list
-    if command:
-        config["Cmd"] = command if isinstance(command, list) else command.split()
-
-    result = _docker_api("/containers/create", data=config)
-    if not result or "Id" not in result:
-        return None
-
-    cid = result["Id"]
-    _docker_api(f"/networks/{network}/connect", data={"Container": cid})
-    _docker_api(f"/containers/{cid}/start", method="post")
-
-    inspect = _docker_api(f"/containers/{cid}/json", method="get")
-    ip = ""
-    if inspect:
-        nets = inspect.get("NetworkSettings", {}).get("Networks", {})
-        ip = nets.get(network, {}).get("IPAddress", "")
-    return cid, ip
-
-
 def deploy_sandbox(session):
+    """Pull and run the images selected on the lab in an isolated Docker network."""
     lab = session.lab
     profile = lab.resource_profile
-    expiry = timezone.now() + timedelta(minutes=profile.time_limit_minutes)
+    terminal = lab.terminal_container
+    services = list(lab.service_containers.all())
+    if terminal is None:
+        logger.error("Lab %s has no ttyd terminal container selected", lab.id)
+        return _fail(session, [], None)
 
-    kali_image = lab.sandbox_image or settings.DOCKER_DEFAULT_IMAGE
-    network_name, _ = _create_network()
-    if not network_name:
-        session.status = SandboxSession.ERROR
-        session.save(update_fields=["status"])
-        return None
+    selected = [terminal, *services]
+    if not all(_ensure_image(container.image) for container in selected):
+        return _fail(session, [], None)
 
-    service_cid = None
-    service_ip = ""
-    service_flag = ""
-    service_port = None
+    ports = _reserve_ports(session, len(selected))
+    if len(ports) != len(selected):
+        logger.error("Port range %s-%s is exhausted", settings.DOCKER_PORT_START, settings.DOCKER_PORT_END)
+        return _fail(session, [], None)
 
-    if lab.scenario_service:
-        try:
-            import importlib
-            mod = importlib.import_module(lab.scenario_service.script_module)
-            external_port = _allocate_port()
-            if external_port is None:
-                logger.error("Port allocation failed for sandbox session %s", session.id)
-            else:
-                result = mod.deploy(network=network_name, host_port=external_port)
-                if result:
-                    service_cid, service_ip, service_flag = result
-                    service_port = external_port
-        except Exception as e:
-            logger.error("Scenario service deployment failed: %s", e)
+    network = _create_network()
+    if not network:
+        return _fail(session, [], None)
 
-    host_config = {
-        "Memory": profile.memory_mb * 1024 * 1024,
-        "NanoCpus": profile.cpu_count * 1_000_000_000,
-        "MemorySwap": profile.memory_mb * 1024 * 1024,
-    }
+    created_ids = []
+    endpoints = []
+    # Start target services first so their private IPs are available in the terminal.
+    for index, service in enumerate(services, start=1):
+        result = _create_container(
+            service.image, f"somacloud-s{session.id}-{index}", network, profile,
+            ports[index], service.container_port, command=service.command,
+        )
+        if not result:
+            return _fail(session, created_ids, network)
+        container_id, ip = result
+        created_ids.append(container_id)
+        endpoints.append({
+            "name": service.name, "image": service.image, "ip": ip,
+            "container_port": service.container_port, "host_port": ports[index],
+            "container_id": container_id,
+        })
 
-    if not _ensure_image(kali_image):
-        logger.error("Kali image %s not available", kali_image)
-        _remove_network(network_name)
-        session.status = SandboxSession.ERROR
-        session.save(update_fields=["status"])
-        return None
-
-    kali_result = _create_container(
-        image=kali_image,
-        network=network_name,
-        host_config=host_config,
-        env={"LAB_TITLE": lab.title, "SERVICE_IP": service_ip, "FLAG": service_flag},
+    first_ip = endpoints[0]["ip"] if endpoints else ""
+    terminal_result = _create_container(
+        terminal.image, f"somacloud-t{session.id}", network, profile, ports[0], terminal.container_port,
+        env={"LAB_TITLE": lab.title, "SERVICE_IP": first_ip, "SERVICE_ENDPOINTS": ",".join(e["ip"] for e in endpoints)},
+        command=terminal.command,
     )
+    if not terminal_result:
+        return _fail(session, created_ids, network)
+    terminal_id, _ = terminal_result
 
-    if not kali_result:
-        _remove_network(network_name)
-        session.status = SandboxSession.ERROR
-        session.save(update_fields=["status"])
-        return None
-
-    kali_cid, _ = kali_result
-
-    server_ip = settings.DOCKER_SERVER_PUBLIC_IP
-    ttyd_port = settings.DOCKER_TERMINAL_PORT
-
-    session.container_id = kali_cid
-    session.service_container_id = service_cid or ""
-    session.service_ip = service_ip
-    session.service_port = service_port
-    session.server_url = f"http://{server_ip}"
-    session.terminal_url = f"http://{server_ip}:{ttyd_port}/"
+    session.container_id = terminal_id
+    session.service_container_id = created_ids[0] if created_ids else ""
+    session.service_container_ids = created_ids
+    session.service_ip = first_ip
+    session.service_port = endpoints[0]["host_port"] if endpoints else None
+    session.service_endpoints = endpoints
+    session.terminal_port = ports[0]
+    session.network_name = network
+    session.server_url = f"{settings.DOCKER_PUBLIC_SCHEME}://{settings.DOCKER_SERVER_PUBLIC_IP}"
+    session.terminal_url = f"{session.server_url}:{session.terminal_port}/"
     session.status = SandboxSession.RUNNING
-    session.expires_at = expiry
-    session.save(
-        update_fields=[
-            "container_id", "service_container_id", "service_ip", "service_port",
-            "server_url", "terminal_url", "status", "expires_at",
-        ]
-    )
-
+    session.expires_at = timezone.now() + timedelta(minutes=profile.time_limit_minutes)
+    session.save()
     return session
 
 
 def stop_sandbox(session):
-    if session.container_id:
-        _docker_api(f"/containers/{session.container_id}/stop", method="post")
-        _docker_api(f"/containers/{session.container_id}", method="delete")
-    if session.service_container_id:
-        _docker_api(f"/containers/{session.service_container_id}/stop", method="post")
-        _docker_api(f"/containers/{session.service_container_id}", method="delete")
+    container_ids = [session.container_id, *session.service_container_ids]
+    # Older sessions created by the legacy provisioner only have service_container_id.
+    if session.service_container_id and session.service_container_id not in container_ids:
+        container_ids.append(session.service_container_id)
+    for container_id in filter(None, container_ids):
+        _remove_container(container_id)
+    _remove_network(session.network_name)
+    _release_ports(session)
     session.status = SandboxSession.STOPPED
     session.stopped_at = timezone.now()
     session.save(update_fields=["status", "stopped_at"])
-    _release_port(session)
 
 
 def get_sandbox_status(session):
     if session.status != SandboxSession.RUNNING:
         return session.status
-    inspect = _docker_api(f"/containers/{session.container_id}/json", method="get")
-    if inspect and inspect.get("State", {}).get("Running"):
+    inspected = _docker_api(f"/containers/{session.container_id}/json", method="get")
+    if inspected and inspected.get("State", {}).get("Running"):
         return SandboxSession.RUNNING
     session.status = SandboxSession.STOPPED
     session.stopped_at = timezone.now()
     session.save(update_fields=["status", "stopped_at"])
-    _release_port(session)
+    _release_ports(session)
     return SandboxSession.STOPPED
 
 
 def expire_stale_sessions():
-    expired = SandboxSession.objects.filter(
-        status=SandboxSession.RUNNING, expires_at__lte=timezone.now()
-    )
-    for session in expired:
+    for session in SandboxSession.objects.filter(status=SandboxSession.RUNNING, expires_at__lte=timezone.now()):
         stop_sandbox(session)
         session.status = SandboxSession.EXPIRED
         session.save(update_fields=["status"])
-
-
-def build_service_image(tag, dockerfile_content, files=None):
-    if _check_image_exists(tag):
-        return True
-    return _build_image_from_files(tag, dockerfile_content, files)

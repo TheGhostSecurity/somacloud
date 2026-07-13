@@ -4,6 +4,7 @@ from .models import (
     Activity,
     ActivityStage,
     Assessment,
+    ContainerImage,
     Enrollment,
     FlagSubmission,
     HackPhase,
@@ -15,6 +16,7 @@ from .models import (
     Module,
     Progress,
     ResourceProfile,
+    PortReservation,
     SandboxSession,
     ScenarioService,
     StudentProfile,
@@ -105,6 +107,19 @@ class LabProgressAdmin(admin.ModelAdmin):
 class SandboxSessionAdmin(admin.ModelAdmin):
     list_display = ("user", "lab", "container_id", "status", "started_at", "expires_at")
     list_filter = ("status",)
+
+
+@admin.register(ContainerImage)
+class ContainerImageAdmin(admin.ModelAdmin):
+    list_display = ("name", "kind", "image", "container_port")
+    list_filter = ("kind",)
+    search_fields = ("name", "image")
+
+
+@admin.register(PortReservation)
+class PortReservationAdmin(admin.ModelAdmin):
+    list_display = ("port", "session", "created_at")
+    readonly_fields = ("port", "session", "created_at")
 
 
 @admin.register(ScenarioService)

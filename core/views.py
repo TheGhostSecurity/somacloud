@@ -33,7 +33,6 @@ from .models import (
     Module,
     ResourceProfile,
     SandboxSession,
-    ScenarioService,
     StudentProfile,
     Tool,
 )
@@ -452,7 +451,7 @@ def student_enroll_lab(request, lab_id):
 @login_required
 def student_lab_detail(request, lab_id):
     lab = get_object_or_404(
-        Lab.objects.select_related("hack_phase", "resource_profile", "scenario_service").prefetch_related("tools"),
+        Lab.objects.select_related("hack_phase", "resource_profile", "terminal_container").prefetch_related("tools", "service_containers"),
         pk=lab_id,
     )
     get_object_or_404(LabEnrollment, user=request.user, lab=lab, is_active=True)
@@ -471,8 +470,14 @@ def student_lab_detail(request, lab_id):
         rendered_notes = lab.notes
         if active_session and active_session.service_ip:
             rendered_notes = rendered_notes.replace("{{SERVICE_IP}}", active_session.service_ip)
+            endpoints = ", ".join(
+                f"{item['name']} ({item['ip']}:{item['container_port']})"
+                for item in active_session.service_endpoints
+            )
+            rendered_notes = rendered_notes.replace("{{SERVICE_ENDPOINTS}}", endpoints)
         else:
             rendered_notes = rendered_notes.replace("{{SERVICE_IP}}", "[service IP will appear after launching sandbox]")
+            rendered_notes = rendered_notes.replace("{{SERVICE_ENDPOINTS}}", "[service endpoints will appear after launching sandbox]")
         rendered_notes = render_markdown(rendered_notes)
 
     last_submission = FlagSubmission.objects.filter(user=request.user, lab=lab).order_by("-submitted_at").first()

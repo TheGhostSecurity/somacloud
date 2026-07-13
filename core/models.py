@@ -77,6 +77,28 @@ class ScenarioService(models.Model):
         return self.name
 
 
+class ContainerImage(models.Model):
+    """A vetted Docker Hub image instructors can attach to a lab."""
+
+    TERMINAL = "terminal"
+    SERVICE = "service"
+    KIND_CHOICES = ((TERMINAL, "Browser terminal (ttyd)"), (SERVICE, "Vulnerable service"))
+
+    name = models.CharField(max_length=100, unique=True)
+    image = models.CharField(max_length=255, unique=True, help_text="Docker Hub image tag, e.g. ghostriley23/kali-ttyd:latest")
+    kind = models.CharField(max_length=16, choices=KIND_CHOICES)
+    container_port = models.PositiveIntegerField(help_text="TCP port exposed inside the container (ttyd is usually 7681).")
+    description = models.TextField(blank=True)
+    command = models.CharField(max_length=500, blank=True, help_text="Optional command override, separated by spaces.")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["kind", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.image})"
+
+
 class Lab(models.Model):
     title = models.CharField(max_length=160)
     slug = models.SlugField(max_length=180)
@@ -87,6 +109,9 @@ class Lab(models.Model):
     notes = models.TextField(blank=True, help_text="Student walkthrough. Use {{SERVICE_IP}} for the service container IP.")
     tools = models.ManyToManyField(Tool, related_name="labs", blank=True)
     resource_profile = models.ForeignKey(ResourceProfile, on_delete=models.PROTECT, related_name="labs")
+    terminal_container = models.ForeignKey(ContainerImage, on_delete=models.PROTECT, null=True, blank=True, related_name="terminal_labs", limit_choices_to={"kind": ContainerImage.TERMINAL})
+    service_containers = models.ManyToManyField(ContainerImage, related_name="service_labs", blank=True, limit_choices_to={"kind": ContainerImage.SERVICE})
+    # Legacy scenario field is retained so existing labs and migrations continue to work.
     scenario_service = models.ForeignKey(ScenarioService, on_delete=models.SET_NULL, null=True, blank=True, related_name="labs")
     sandbox_image = models.CharField(max_length=200, blank=True, default="")
     sandbox_config = models.TextField(blank=True)
@@ -199,6 +224,9 @@ class SandboxSession(models.Model):
     server_url = models.CharField(max_length=500, blank=True)
     terminal_url = models.CharField(max_length=500, blank=True)
     terminal_port = models.IntegerField(null=True, blank=True, help_text="Port of per-sandbox ttyd instance")
+    network_name = models.CharField(max_length=128, blank=True)
+    service_container_ids = models.JSONField(default=list, blank=True)
+    service_endpoints = models.JSONField(default=list, blank=True)
     status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=PENDING)
     started_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
@@ -209,6 +237,18 @@ class SandboxSession(models.Model):
 
     def __str__(self):
         return f"{self.user.username} sandbox for {self.lab.title} ({self.get_status_display()})"
+
+
+class PortReservation(models.Model):
+    port = models.PositiveIntegerField(unique=True)
+    session = models.ForeignKey(SandboxSession, on_delete=models.CASCADE, related_name="port_reservations")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["port"]
+
+    def __str__(self):
+        return f"{self.port} reserved for session {self.session_id}"
 
 
 class FlagSubmission(models.Model):
@@ -376,4 +416,3 @@ class Assessment(models.Model):
 
     def __str__(self):
         return f"Assessment for {self.activity.title}"
-

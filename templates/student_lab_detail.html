@@ -26,8 +26,11 @@
                         <p class="text-xs font-semibold text-[#5c5c5c]">Resource Profile</p>
                         <p class="mt-1 font-semibold text-black">{{ lab.resource_profile.name }}</p>
                         <p class="mt-1 text-xs text-[#424242]">{{ lab.resource_profile.cpu_count }} CPU &middot; {{ lab.resource_profile.memory_mb }} MB RAM &middot; {{ lab.resource_profile.time_limit_minutes }} min</p>
-                        {% if lab.scenario_service %}
-                            <p class="mt-2 text-xs font-semibold text-[#0067c0]">+ {{ lab.scenario_service.name }}</p>
+                        {% if lab.terminal_container %}
+                            <p class="mt-2 text-xs font-semibold text-[#0067c0]">Terminal: {{ lab.terminal_container.name }}</p>
+                        {% endif %}
+                        {% if lab.service_containers.exists %}
+                            <p class="mt-1 text-xs font-semibold text-[#0067c0]">Targets: {% for service in lab.service_containers.all %}{{ service.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
                         {% endif %}
                     </div>
                 </div>
@@ -183,8 +186,8 @@
                                     {{ active_session.get_status_display }}
                                 </p>
                                 <p class="mt-1 text-xs text-[#5c5c5c]">Terminal: {{ active_session.container_id|truncatechars:20 }}</p>
-                                {% if active_session.service_ip %}
-                                    <p class="mt-1 text-xs text-[#5c5c5c]">Service: {{ active_session.service_ip }}{% if active_session.service_port %}:{{ active_session.service_port }}{% endif %}</p>
+                                {% if active_session.service_endpoints %}
+                                    <p class="mt-1 text-xs text-[#5c5c5c]">Target{% if active_session.service_endpoints|length > 1 %}s{% endif %}: {% for target in active_session.service_endpoints %}{{ target.name }} ({{ target.ip }}:{{ target.container_port }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>
                                 {% endif %}
                             </div>
                             <a class="mt-3 block rounded-md bg-[#0067c0] px-4 py-2 text-center text-sm font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_sandbox_view' active_session.id %}">Open Terminal</a>
@@ -197,8 +200,11 @@
                                 <div class="flex justify-between"><span>CPU</span><span class="font-semibold text-black">{{ lab.resource_profile.cpu_count }} core(s)</span></div>
                                 <div class="flex justify-between"><span>Memory</span><span class="font-semibold text-black">{{ lab.resource_profile.memory_mb }} MB</span></div>
                                 <div class="flex justify-between"><span>Time limit</span><span class="font-semibold text-black">{{ lab.resource_profile.time_limit_minutes }} min</span></div>
-                                {% if lab.scenario_service %}
-                                    <div class="flex justify-between"><span>Service</span><span class="font-semibold text-[#0067c0]">{{ lab.scenario_service.name }}</span></div>
+                                {% if lab.terminal_container %}
+                                    <div class="flex justify-between"><span>Terminal</span><span class="font-semibold text-[#0067c0]">{{ lab.terminal_container.name }}</span></div>
+                                {% endif %}
+                                {% if lab.service_containers.exists %}
+                                    <div class="flex justify-between"><span>Targets</span><span class="font-semibold text-[#0067c0]">{{ lab.service_containers.count }}</span></div>
                                 {% endif %}
                             </div>
                             <form action="{% url 'launch_sandbox' lab.id %}" method="post" class="mt-4">

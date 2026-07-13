@@ -1,8 +1,7 @@
 from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand
 
-from core.models import HackPhase, ResourceProfile, ScenarioService, Tool
-from scenario_services import list_services
+from core.models import HackPhase, ResourceProfile, Tool
 
 
 DEFAULT_PHASES = [
@@ -55,7 +54,6 @@ class Command(BaseCommand):
         self._seed_phases()
         self._seed_resources()
         self._seed_tools()
-        self._seed_services()
         self._seed_groups()
         self.stdout.write(self.style.SUCCESS("Seed data loaded successfully."))
 
@@ -93,21 +91,6 @@ class Command(BaseCommand):
             if created:
                 count += 1
         self.stdout.write(f"  Tools: {count} created, {len(DEFAULT_TOOLS)} total")
-
-    def _seed_services(self):
-        count = 0
-        for slug, info in list_services().items():
-            _, created = ScenarioService.objects.update_or_create(
-                slug=slug,
-                defaults={
-                    "name": info["name"],
-                    "script_module": info["module_path"],
-                    "default_flag": info.get("flag", ""),
-                },
-            )
-            if created:
-                count += 1
-        self.stdout.write(f"  ScenarioServices: {count} created, discovered {len(list_services())}")
 
     def _seed_groups(self):
         group, created = Group.objects.get_or_create(name=INSTRUCTOR_GROUP)

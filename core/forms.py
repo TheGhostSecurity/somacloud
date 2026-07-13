@@ -6,7 +6,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 
-from .models import HackPhase, Lab, ResourceProfile, StudentProfile, Tool
+from .models import ContainerImage, HackPhase, Lab, ResourceProfile, StudentProfile
 
 
 User = get_user_model()
@@ -172,10 +172,10 @@ class LabForm(forms.ModelForm):
             "title",
             "hack_phase",
             "summary",
-            "scenario_service",
+            "terminal_container",
+            "service_containers",
             "notes",
             "theory_content",
-            "tools",
             "resource_profile",
             "challenge_type",
             "challenge_question",
@@ -183,8 +183,6 @@ class LabForm(forms.ModelForm):
             "challenge_answer",
             "flag",
             "flag_hint",
-            "sandbox_image",
-            "sandbox_config",
         ]
         widgets = {
             "flag": forms.TextInput(attrs={"class": "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 font-mono"}),
@@ -192,8 +190,9 @@ class LabForm(forms.ModelForm):
         }
         help_texts = {
             "theory_content": "Supports Markdown: # headers, - lists, ``` code blocks, **bold**, *italic*.",
-            "scenario_service": "Optional. Select a vulnerable service to deploy alongside the sandbox.",
-            "notes": "Supports Markdown: # headers, - lists, ``` code blocks, **bold**, *italic*. Use {{SERVICE_IP}} for the service container IP.",
+            "terminal_container": "Select the ttyd image students will use in the browser.",
+            "service_containers": "Select one or more vulnerable-service images to run with each sandbox.",
+            "notes": "Supports Markdown. Use {{SERVICE_IP}} for the first target, or {{SERVICE_ENDPOINTS}} for all targets.",
             "flag": "The secret flag students must find and submit. For Question challenge type, leave blank.",
             "flag_hint": "Shown when a student submits an incorrect flag.",
             "challenge_type": "Flag = hidden value in service. Question = quiz when no service is used.",
@@ -209,21 +208,19 @@ class LabForm(forms.ModelForm):
         hints = {
             "hack_phase": "Run `python manage.py seed_data` if this is empty.",
             "resource_profile": "Run `python manage.py seed_data` if this is empty.",
-            "tools": "Hold Ctrl/Cmd to select multiple. Run `python manage.py seed_data` if empty.",
         }
         for field_name, field in self.fields.items():
-            if field_name == "tools":
-                field.widget.attrs["class"] = base_css + " h-40"
-                field.widget.attrs["size"] = "10"
-            elif field_name in ("theory_content", "notes"):
-                field.widget.attrs["class"] = area_css + " h-64"
+            if field_name == "service_containers":
+                field.widget.attrs["class"] = base_css + " h-32"
+                field.widget.attrs["size"] = "6"
+                field.widget.attrs["multiple"] = "multiple"
+                continue
+            if field_name in ("theory_content", "notes"):
+                field.widget.attrs["class"] = area_css + " h-24"
                 field.widget.attrs["placeholder"] = "Write in Markdown (# headers, - lists, ``` code)..."
             elif field_name == "challenge_question":
                 field.widget.attrs["class"] = area_css + " h-32"
                 field.widget.attrs["placeholder"] = "Enter the question students must answer..."
-            elif field_name == "sandbox_config":
-                field.widget.attrs["class"] = area_css + " h-32"
-                field.widget.attrs["placeholder"] = "YAML configuration for the sandbox environment"
             elif field_name == "flag_hint":
                 field.widget.attrs["class"] = area_css + " h-24"
             elif field_name == "summary":
@@ -231,8 +228,6 @@ class LabForm(forms.ModelForm):
             else:
                 if "class" not in field.widget.attrs:
                     field.widget.attrs["class"] = base_css
-            if field_name == "sandbox_image":
-                field.widget.attrs["placeholder"] = "e.g. kalilinux/kali-rolling"
             if field_name in hints:
                 field.help_text = hints[field_name]
 
@@ -247,6 +242,12 @@ class LabForm(forms.ModelForm):
             return val
         except json.JSONDecodeError:
             raise forms.ValidationError("Invalid JSON. Use format: [\"Option A\",\"Option B\",\"Option C\"]")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get("terminal_container"):
+            self.add_error("terminal_container", "Select a browser-terminal (ttyd) container before saving this lab.")
+        return cleaned_data
 
 
 class ResourceProfileForm(forms.ModelForm):

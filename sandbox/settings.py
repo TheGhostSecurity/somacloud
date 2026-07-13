@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 
@@ -76,9 +77,15 @@ LOGOUT_REDIRECT_URL = "home"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-DOCKER_HOST = "http://127.0.0.1:2375"
-DOCKER_DEFAULT_IMAGE = "kalilinux/kali-rolling"
-DOCKER_SERVER_PUBLIC_IP = '13.53.182.227'
-DOCKER_TERMINAL_PORT = "8080"
-DOCKER_SERVICE_PORT_START = 9000
-DOCKER_SERVICE_PORT_END = 9100
+# Docker Remote API. Docker is exposed with mutual TLS on this host.
+DOCKER_HOST = os.getenv("DOCKER_HOST", "https://16.16.138.119:2376")
+DOCKER_TLS_CERT_PATH = os.getenv("DOCKER_TLS_CERT_PATH", "/etc/docker/certs")
+DOCKER_TLS_CA_FILE = os.getenv("DOCKER_TLS_CA_FILE", "ca.pem")
+DOCKER_TLS_CERT_FILE = os.getenv("DOCKER_TLS_CERT_FILE", "client-cert.pem")
+DOCKER_TLS_KEY_FILE = os.getenv("DOCKER_TLS_KEY_FILE", "client-key.pem")
+DOCKER_TLS_VERIFY = os.getenv("DOCKER_TLS_VERIFY", "true").lower() in {"1", "true", "yes"}
+DOCKER_API_TIMEOUT = int(os.getenv("DOCKER_API_TIMEOUT", "30"))
+DOCKER_SERVER_PUBLIC_IP = os.getenv("DOCKER_SERVER_PUBLIC_IP", "16.16.138.119")
+DOCKER_PUBLIC_SCHEME = os.getenv("DOCKER_PUBLIC_SCHEME", "http")
+DOCKER_PORT_START = int(os.getenv("DOCKER_PORT_START", "9000"))
+DOCKER_PORT_END = int(os.getenv("DOCKER_PORT_END", "9100"))
