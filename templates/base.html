@@ -1,12 +1,14 @@
 <!doctype html>
 <html lang="en">
 <head>
+    {% load static %}
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{% block meta_description %}SomaCloud is a secure cloud platform for cybersecurity learning, virtual labs, and classroom management.{% endblock %}">
     <title>{% block title %}SomaCloud{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="{% static 'css/dashboard-visuals.css' %}">
     <style>html{zoom:80%}</style>
 </head>
 <body class="{% block body_class %}bg-slate-50 text-slate-900{% endblock %}">

@@ -754,6 +754,15 @@ def student_sandbox_view(request, session_id):
         delta = session.expires_at - timezone.now()
         remaining = max(0, int(delta.total_seconds()))
 
+    notes = session.lab.notes or ""
+    if notes:
+        endpoints = ", ".join(
+            f"{item['name']} ({item['ip']}:{item['container_port']})"
+            for item in session.service_endpoints
+        )
+        notes = notes.replace("{{SERVICE_IP}}", session.service_ip or "[no target configured]")
+        notes = notes.replace("{{SERVICE_ENDPOINTS}}", endpoints or "[no targets configured]")
+
     return render(
         request,
         "student_sandbox.html",
@@ -763,6 +772,8 @@ def student_sandbox_view(request, session_id):
             "session": session,
             "status": status,
             "remaining": remaining,
+            "progress": lab_progress_for(request.user, session.lab),
+            "sandbox_notes": render_markdown(notes) if notes else "",
         },
     )
 

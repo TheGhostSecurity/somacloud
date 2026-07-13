@@ -3,7 +3,7 @@
 
 {% block body_class %}bg-[#f7f7f7] text-[#1f1f1f] antialiased{% endblock %}
 {% block header %}{% endblock %}
-{% block main_class %}min-h-screen bg-[#f7f7f7]{% endblock %}
+{% block main_class %}min-h-screen bg-[#f7f7f7] bg-dot-grid{% endblock %}
 
 {% block content %}
 <div class="flex min-h-screen flex-col">
@@ -27,7 +27,9 @@
                     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {% for lab in phase.labs.all %}
                             {% if lab.is_published %}
-                                <article class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                                <article class="visual-lab-card rounded-xl border border-[#e0e0e0] bg-white shadow-sm">
+                                    <div class="visual-lab-card__image {% cycle 'photo-circuit' 'photo-terminal' 'photo-infrastructure' %}"></div>
+                                    <div class="visual-lab-card__body">
                                     <div class="flex items-start justify-between gap-3">
                                         <h3 class="font-semibold text-black">{{ lab.title }}</h3>
                                         {% if lab.id in enrolled_ids %}
@@ -63,6 +65,7 @@
                                             </form>
                                         {% endif %}
                                     </div>
+                                    </div>
                                 </article>
                             {% endif %}
                         {% empty %}
@@ -73,9 +76,17 @@
                     </div>
                 </section>
             {% empty %}
-                <div class="rounded-xl border border-[#e0e0e0] bg-white p-8 text-center shadow-sm">
-                    <i data-lucide="flask-conical" class="mx-auto h-10 w-10 text-[#5c5c5c]"></i>
-                    <h2 class="mt-4 text-lg font-semibold text-black">No labs available</h2>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-10 text-center shadow-sm">
+                    <svg class="empty-state-svg mx-auto h-28 w-28 text-[#b0b0b0]" viewBox="0 0 80 80" fill="none">
+                        <rect x="10" y="18" width="60" height="44" rx="4" stroke="currentColor" stroke-width="2"/>
+                        <rect x="16" y="24" width="48" height="32" rx="2" fill="currentColor" opacity=".06"/>
+                        <path d="M22 34h36M22 42h24M22 50h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".25"/>
+                        <circle cx="60" cy="14" r="8" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"/>
+                        <path d="M60 10v8M56 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".35"/>
+                        <path d="M6 62l8-6 6 4 10-8 12 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".3"/>
+                        <circle cx="72" cy="70" r="5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".25"/>
+                    </svg>
+                    <h2 class="mt-5 text-lg font-semibold text-black">No labs available</h2>
                     <p class="mt-2 text-sm text-[#5c5c5c]">Instructors haven't published any labs yet. Check back soon!</p>
                 </div>
             {% endfor %}

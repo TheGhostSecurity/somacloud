@@ -20,7 +20,9 @@
                     {% csrf_token %}
 
                     <div class="md:grid md:grid-cols-2 md:gap-6">
-                        <div class="mb-6 rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm md:mb-0">
+                        <div class="visual-form-card visual-lab-card mb-6 rounded-xl border border-[#e0e0e0] bg-white shadow-sm md:mb-0">
+                            <div class="visual-lab-card__image photo-workspace h-20"></div>
+                            <div class="p-6">
                             <div class="mb-4 flex items-center gap-2 border-b border-[#e0e0e0] pb-3">
                                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0067c0] text-white"><i data-lucide="clipboard-pen" class="h-4 w-4"></i></span>
                                 <h2 class="text-lg font-semibold text-black">Basic Information</h2>
@@ -41,9 +43,12 @@
                                     {% endif %}
                                 {% endfor %}
                             </div>
+                            </div>
                         </div>
 
-                        <div class="mb-6 rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm md:mb-0">
+                        <div class="visual-form-card visual-lab-card mb-6 rounded-xl border border-[#e0e0e0] bg-white shadow-sm md:mb-0">
+                            <div class="visual-lab-card__image photo-infrastructure h-20"></div>
+                            <div class="p-6">
                             <div class="mb-4 flex items-center gap-2 border-b border-[#e0e0e0] pb-3">
                                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0067c0] text-white"><i data-lucide="server" class="h-4 w-4"></i></span>
                                 <h2 class="text-lg font-semibold text-black">Environment</h2>
@@ -64,9 +69,12 @@
                                     {% endif %}
                                 {% endfor %}
                             </div>
+                            </div>
                         </div>
 
-                        <div class="mb-6 rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm md:mb-0">
+                        <div class="visual-form-card visual-lab-card mb-6 rounded-xl border border-[#e0e0e0] bg-white shadow-sm md:mb-0">
+                            <div class="visual-lab-card__image photo-terminal h-20"></div>
+                            <div class="p-6">
                             <div class="mb-4 flex items-center gap-2 border-b border-[#e0e0e0] pb-3">
                                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0067c0] text-white"><i data-lucide="book-open-text" class="h-4 w-4"></i></span>
                                 <h2 class="text-lg font-semibold text-black">Content</h2>
@@ -94,9 +102,12 @@
                                     {% endif %}
                                 {% endfor %}
                             </div>
+                            </div>
                         </div>
 
-                        <div class="mb-6 rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm md:mb-0">
+                        <div class="visual-form-card visual-lab-card mb-6 rounded-xl border border-[#e0e0e0] bg-white shadow-sm md:mb-0">
+                            <div class="visual-lab-card__image photo-circuit h-20"></div>
+                            <div class="p-6">
                             <div class="mb-4 flex items-center gap-2 border-b border-[#e0e0e0] pb-3">
                                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0067c0] text-white"><i data-lucide="target" class="h-4 w-4"></i></span>
                                 <h2 class="text-lg font-semibold text-black">Challenge</h2>
@@ -144,6 +155,7 @@
                                         </label>
                                     {% endif %}
                                 {% endfor %}
+                            </div>
                             </div>
                         </div>
                     </div>

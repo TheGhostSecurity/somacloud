@@ -3,7 +3,7 @@
 
 {% block body_class %}bg-[#f7f7f7] text-[#1f1f1f] antialiased{% endblock %}
 {% block header %}{% endblock %}
-{% block main_class %}min-h-screen bg-[#f7f7f7]{% endblock %}
+{% block main_class %}min-h-screen bg-[#f7f7f7] bg-dot-grid{% endblock %}
 
 {% block content %}
 <div class="flex min-h-screen flex-col">
@@ -23,21 +23,23 @@
             </div>
 
             <div class="mb-7 grid gap-3 sm:grid-cols-4">
-                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold text-[#5c5c5c]">Online Now</p>
-                    <p class="mt-3 text-3xl font-semibold text-[#107c41]">{{ total_online }}</p>
+                <div class="stat-card stat-card-green rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-[#5c5c5c]"><span class="pulse-dot mr-1 align-middle"></span> Online Now</p>
+                    <p class="mt-3 text-3xl font-semibold text-[#107c41] stat-glow">{{ total_online }}</p>
                 </div>
-                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                <div class="stat-card rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Active Labs</p>
-                    <p class="mt-3 text-3xl font-semibold text-black">{{ lab_breakdown|length }}</p>
+                    <p class="mt-3 text-3xl font-semibold text-black stat-glow">{{ lab_breakdown|length }}</p>
+                    <svg class="absolute bottom-2 right-3 h-10 w-10 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
                 </div>
-                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                <div class="stat-card rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Total Students</p>
-                    <p class="mt-3 text-3xl font-semibold text-black">{{ sessions|length }}</p>
+                    <p class="mt-3 text-3xl font-semibold text-black stat-glow">{{ sessions|length }}</p>
+                    <svg class="absolute bottom-2 right-3 h-10 w-10 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>
                 </div>
-                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold text-[#5c5c5c]">Auto-refresh</p>
-                    <p class="mt-3 text-sm font-semibold text-black">Every 15s</p>
+                <div class="stat-card stat-card-amber rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold text-[#5c5c5c]"><i data-lucide="refresh-cw" class="mr-1 inline h-3 w-3"></i> Auto-refresh</p>
+                    <p class="mt-3 text-sm font-semibold text-black stat-glow">Every 15s</p>
                 </div>
             </div>
 
@@ -125,9 +127,16 @@
                                 </tr>
                             {% empty %}
                                 <tr>
-                                    <td class="px-6 py-8 text-center text-[#5c5c5c]" colspan="7">
-                                        <i data-lucide="radio" class="mx-auto mb-2 h-8 w-8"></i>
-                                        <p>No active sessions right now.</p>
+                                    <td class="px-6 py-10 text-center text-[#5c5c5c]" colspan="7">
+                                        <svg class="empty-state-svg mx-auto h-20 w-20 text-[#b0b0b0]" viewBox="0 0 80 80" fill="none">
+                                            <circle cx="40" cy="40" r="28" stroke="currentColor" stroke-width="2" opacity=".3"/>
+                                            <circle cx="40" cy="40" r="18" stroke="currentColor" stroke-width="1.5" opacity=".2"/>
+                                            <circle cx="40" cy="40" r="8" stroke="currentColor" stroke-width="1.5" opacity=".15"/>
+                                            <path d="M40 12V6M40 74v-6M68 40h-6M18 40h-6M58.28 21.72l-4.24 4.24M25.96 54.04l-4.24 4.24M58.28 58.28l-4.24-4.24M25.96 25.96l-4.24-4.24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".2"/>
+                                            <circle cx="40" cy="40" r="3" fill="currentColor" opacity=".25"/>
+                                            <path d="M46 8a2 2 0 10-4 0v2a2 2 0 104 0V8z" fill="currentColor" opacity=".15"/>
+                                        </svg>
+                                        <p class="mt-4 font-semibold text-[#1f1f1f]">No active sessions</p>
                                         <p class="mt-1 text-xs">Sessions appear here when students launch sandboxes.</p>
                                     </td>
                                 </tr>

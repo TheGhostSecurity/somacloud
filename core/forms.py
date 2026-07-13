@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
+from django.utils.text import slugify
 
 from .models import ContainerImage, HackPhase, Lab, ResourceProfile, StudentProfile
 
@@ -300,6 +301,21 @@ class LabForm(forms.ModelForm):
         if not cleaned_data.get("terminal_container"):
             self.add_error("terminal_container", "A terminal container image is required.")
         return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if not instance.slug:
+            base_slug = slugify(instance.title)[:180]
+            slug = base_slug
+            n = 1
+            while Lab.objects.filter(hack_phase=instance.hack_phase, slug=slug).exclude(pk=instance.pk).exists():
+                slug = f"{base_slug}-{n}"
+                n += 1
+            instance.slug = slug
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
 
 class ResourceProfileForm(forms.ModelForm):

@@ -3,7 +3,7 @@
 
 {% block body_class %}bg-[#f7f7f7] text-[#1f1f1f] antialiased{% endblock %}
 {% block header %}{% endblock %}
-{% block main_class %}min-h-screen bg-[#f7f7f7]{% endblock %}
+{% block main_class %}min-h-screen bg-[#f7f7f7] bg-dot-grid{% endblock %}
 
 {% block content %}
 <div class="flex min-h-screen flex-col">
@@ -11,17 +11,17 @@
     <div class="flex min-h-0 flex-1">
         {% include "partials/dashboard_sidebar.html" %}
 
-        <section class="min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
+        <section class="blob-bg min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
             <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <p class="text-sm font-semibold text-[#0067c0]">Administration</p>
                     <h1 class="mt-1 text-2xl font-semibold text-black">Platform Overview</h1>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <a class="inline-flex items-center gap-2 rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" href="#create-user">
+                    <button onclick="document.getElementById('createUserModal').classList.remove('hidden')" class="inline-flex items-center gap-2 rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]">
                         <i data-lucide="user-plus" class="h-4 w-4"></i>
                         Create user
-                    </a>
+                    </button>
                     <a class="inline-flex items-center gap-2 rounded-md border border-[#c8c8c8] bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] hover:bg-[#f7f7f7]" href="{% url 'instructor_dashboard' %}">
                         <i data-lucide="flask-conical" class="h-4 w-4"></i>
                         Lab Management
@@ -30,39 +30,43 @@
             </div>
 
             <div class="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                <div class="stat-card rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Total Users</p>
-                    <p class="mt-3 text-3xl font-semibold text-black">{{ stats.total_users }}</p>
+                    <p class="mt-3 text-3xl font-semibold text-black stat-glow">{{ stats.total_users }}</p>
                     <div class="mt-2 flex gap-3 text-xs">
                         <span class="text-[#0067c0]">{{ stats.admins }} admin{{ stats.admins|pluralize }}</span>
                         <span class="text-[#107c41]">{{ stats.instructors }} instructor{{ stats.instructors|pluralize }}</span>
                         <span class="text-[#424242]">{{ stats.students }} student{{ stats.students|pluralize }}</span>
                     </div>
+                    <svg class="absolute bottom-2 right-3 h-10 w-10 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg>
                 </div>
-                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                <div class="stat-card rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Labs</p>
-                    <p class="mt-3 text-3xl font-semibold text-black">{{ lab_stats.total }}</p>
+                    <p class="mt-3 text-3xl font-semibold text-black stat-glow">{{ lab_stats.total }}</p>
                     <div class="mt-2 flex gap-3 text-xs">
                         <span class="text-[#107c41]">{{ lab_stats.published }} published</span>
                         <span class="text-[#c43e1c]">{{ lab_stats.draft }} draft</span>
                     </div>
+                    <svg class="absolute bottom-2 right-3 h-10 w-10 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
                 </div>
-                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                <div class="stat-card stat-card-green rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Active Sessions</p>
-                    <p class="mt-3 text-3xl font-semibold text-[#107c41]">{{ session_stats.running }}</p>
+                    <p class="mt-3 text-3xl font-semibold text-[#107c41] stat-glow">{{ session_stats.running }}</p>
                     <p class="mt-2 text-xs text-[#5c5c5c]">{{ session_stats.today }} started today</p>
+                    <svg class="absolute bottom-2 right-3 h-10 w-10 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"/></svg>
                 </div>
-                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                <div class="stat-card stat-card-amber rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Infrastructure</p>
-                    <p class="mt-3 text-3xl font-semibold text-black">{{ container_image_count }}</p>
+                    <p class="mt-3 text-3xl font-semibold text-black stat-glow">{{ container_image_count }}</p>
                     <div class="mt-2 flex items-center gap-2 text-xs">
                         {% if docker_ok %}
-                            <span class="inline-flex items-center gap-1 text-[#107c41]"><span class="h-2 w-2 rounded-full bg-[#107c41]"></span> Docker online</span>
+                            <span class="inline-flex items-center gap-1 text-[#107c41]"><span class="pulse-dot"></span> Docker online</span>
                             <span class="text-[#424242]">{{ container_count }} running</span>
                         {% else %}
                             <span class="inline-flex items-center gap-1 text-[#ef4444]"><span class="h-2 w-2 rounded-full bg-[#ef4444]"></span> Docker unreachable</span>
                         {% endif %}
                     </div>
+                    <svg class="absolute bottom-2 right-3 h-10 w-10 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
                 </div>
             </div>
 
@@ -113,35 +117,39 @@
                 </section>
             {% endif %}
 
-            <section id="create-user" class="mb-6 overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
-                <div class="flex items-center justify-between border-b border-[#ededed] px-5 py-4">
-                    <div>
-                        <h2 class="font-semibold text-black">Create User</h2>
-                        <p class="text-sm text-[#5c5c5c]">Provision a new student, instructor, or administrator account.</p>
+            <div id="createUserModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+                <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" onclick="document.getElementById('createUserModal').classList.add('hidden')"></div>
+                <div class="fixed inset-4 top-[10%] mx-auto max-w-lg overflow-y-auto rounded-xl border border-[#e7e7e7] bg-white shadow-2xl md:inset-x-auto md:w-full">
+                    <div class="flex items-center justify-between border-b border-[#ededed] px-5 py-4">
+                        <div>
+                            <h2 class="font-semibold text-black">Create User</h2>
+                            <p class="text-sm text-[#5c5c5c]">Provision a new student, instructor, or administrator account.</p>
+                        </div>
+                        <button onclick="document.getElementById('createUserModal').classList.add('hidden')" class="rounded-md border border-[#c8c8c8] bg-white px-2 py-1 text-sm text-[#5c5c5c] hover:bg-[#f7f7f7]">Close</button>
+                    </div>
+                    <div class="px-5 py-6">
+                        <form class="grid gap-4 sm:grid-cols-2" action="{% url 'create_user' %}" method="post">
+                            {% csrf_token %}
+                            {% for field in create_user_form %}
+                                <label class="block text-sm font-semibold text-black {% if field.name == 'email' %}sm:col-span-2{% endif %}">
+                                    {{ field.label }}
+                                    <span class="mt-1 block">{{ field }}</span>
+                                    {% if field.errors %}
+                                        <span class="mt-1 block text-xs font-medium text-[#c43e1c]">{{ field.errors|striptags }}</span>
+                                    {% endif %}
+                                </label>
+                            {% endfor %}
+                            {% if create_user_form.non_field_errors %}
+                                <div class="rounded border border-[#f3b3a6] bg-[#fff7ed] px-3 py-2 text-sm text-[#c43e1c] sm:col-span-2">{{ create_user_form.non_field_errors|striptags }}</div>
+                            {% endif %}
+                            <div class="flex items-center justify-end gap-3 sm:col-span-2">
+                                <button class="rounded border border-[#c8c8c8] bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] hover:bg-[#f7f7f7]" type="reset">Clear</button>
+                                <button class="rounded bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" type="submit">Create user</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
-                <div class="px-5 py-6">
-                    <form class="grid gap-4 sm:grid-cols-2" action="{% url 'create_user' %}" method="post">
-                        {% csrf_token %}
-                        {% for field in create_user_form %}
-                            <label class="block text-sm font-semibold text-black {% if field.name == 'email' %}sm:col-span-2{% endif %}">
-                                {{ field.label }}
-                                <span class="mt-1 block">{{ field }}</span>
-                                {% if field.errors %}
-                                    <span class="mt-1 block text-xs font-medium text-[#c43e1c]">{{ field.errors|striptags }}</span>
-                                {% endif %}
-                            </label>
-                        {% endfor %}
-                        {% if create_user_form.non_field_errors %}
-                            <div class="rounded border border-[#f3b3a6] bg-[#fff7ed] px-3 py-2 text-sm text-[#c43e1c] sm:col-span-2">{{ create_user_form.non_field_errors|striptags }}</div>
-                        {% endif %}
-                        <div class="flex items-center justify-end gap-3 sm:col-span-2">
-                            <button class="rounded border border-[#c8c8c8] bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] hover:bg-[#f7f7f7]" type="reset">Clear</button>
-                            <button class="rounded bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" type="submit">Create user</button>
-                        </div>
-                    </form>
-                </div>
-            </section>
+            </div>
 
             <section id="users" class="overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
                 <div class="flex flex-col gap-3 border-b border-[#ededed] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
@@ -150,7 +158,6 @@
                         <p class="text-sm text-[#5c5c5c]">{{ managed_users|length }} account{{ managed_users|length|pluralize }} — manage roles, access, and accounts.</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <input id="user-search" class="h-9 w-56 rounded-lg border border-[#c8c8c8] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#0067c0] focus:ring-2 focus:ring-[#b7d8ff]" type="text" placeholder="Search users..." oninput="filterUsers(this.value)">
                         <select id="role-filter" class="h-9 rounded-lg border border-[#c8c8c8] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#0067c0] focus:ring-2 focus:ring-[#b7d8ff]" onchange="filterUsers()">
                             <option value="">All roles</option>
                             <option value="Administrator">Administrator</option>
@@ -232,12 +239,17 @@
 
 <script>
 function filterUsers(searchVal) {
-    const search = (searchVal || document.getElementById('user-search').value || '').toLowerCase();
+    const input = document.getElementById('global-user-search');
+    const search = (searchVal ?? input.value ?? '').toLowerCase();
+    const clearBtn = document.getElementById('global-search-clear');
+    if (clearBtn) clearBtn.style.display = search ? '' : 'none';
     const role = document.getElementById('role-filter').value.toLowerCase();
     document.querySelectorAll('.user-row').forEach(function(row) {
         const username = row.getAttribute('data-username');
+        const rowName = (row.querySelector('td:nth-child(2)')?.textContent || '').toLowerCase();
+        const rowEmail = (row.querySelector('td:nth-child(3)')?.textContent || '').toLowerCase();
         const rowRole = row.getAttribute('data-role').toLowerCase();
-        const matchSearch = !search || username.includes(search);
+        const matchSearch = !search || username.includes(search) || rowName.includes(search) || rowEmail.includes(search);
         const matchRole = !role || rowRole === role;
         row.style.display = matchSearch && matchRole ? '' : 'none';
     });
