@@ -74,7 +74,7 @@ class UserManagementTests(TestCase):
         self.client.login(username="adminuser", password="StrongPass123!")
         response = self.client.get("/admin/")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Control Panel")
+        self.assertContains(response, "Platform Overview")
 
     def test_control_panel_name_uses_admin_url(self):
         self.assertEqual(reverse("control_panel"), "/admin/")

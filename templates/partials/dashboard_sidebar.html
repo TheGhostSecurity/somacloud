@@ -15,11 +15,17 @@
                 <i data-lucide="server" class="h-5 w-5 {% if active_nav == 'resources' %}text-[#0067c0]{% endif %}"></i>
                 Resource Profiles
             </a>
+            <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'monitor' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'instructor_live_monitor' %}">
+                <i data-lucide="radio" class="h-5 w-5 {% if active_nav == 'monitor' %}text-[#0067c0]{% endif %}"></i>
+                Live Monitor
+            </a>
         {% endif %}
-        <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'labs' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'student_labs' %}">
-            <i data-lucide="flask-conical" class="h-5 w-5 {% if active_nav == 'labs' %}text-[#0067c0]{% endif %}"></i>
-            {% if user_role_label == "Instructor" %}Lab Library{% else %}Lab Library{% endif %}
-        </a>
+        {% if user_role_label == "Student" %}
+            <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'labs' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'student_labs' %}">
+                <i data-lucide="flask-conical" class="h-5 w-5 {% if active_nav == 'labs' %}text-[#0067c0]{% endif %}"></i>
+                Lab Library
+            </a>
+        {% endif %}
         <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'progress' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'progress_overview' %}">
             <i data-lucide="activity" class="h-5 w-5 {% if active_nav == 'progress' %}text-[#0067c0]{% endif %}"></i>
             {% if user_role_label == "Instructor" %}Learner Progress{% else %}Progress{% endif %}
@@ -29,8 +35,8 @@
             Profile
         </a>
         {% if request.user.is_staff or request.user.is_superuser %}
-            <a class="flex items-center gap-3 rounded-md px-3 py-2 text-[#424242] hover:bg-white" href="{% url 'control_panel' %}">
-                <i data-lucide="shield" class="h-5 w-5"></i>
+            <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'users' %}border-l-4 border-[#0067c0] bg-white px-2 font-semibold text-[#1f1f1f]{% else %}text-[#424242] hover:bg-white{% endif %}" href="{% url 'control_panel' %}">
+                <i data-lucide="shield" class="h-5 w-5 {% if active_nav == 'users' %}text-[#0067c0]{% endif %}"></i>
                 Administration
             </a>
         {% endif %}

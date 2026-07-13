@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from django.db.models import Count, Q, ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from .content_loader import render_markdown
@@ -24,6 +25,7 @@ from .forms import (
 )
 from .models import (
     Activity,
+    ContainerImage,
     FlagSubmission,
     HackPhase,
     Lab,
@@ -36,7 +38,7 @@ from .models import (
     StudentProfile,
     Tool,
 )
-from .orchestrator import deploy_sandbox, get_sandbox_status, stop_sandbox
+from .orchestrator import _docker_api, deploy_sandbox, get_sandbox_status, stop_sandbox
 from .services import (
     enrolled_labs_for,
     lab_progress_for,
@@ -57,6 +59,30 @@ def _is_instructor(user):
 
 def _build_admin_context(current_user_id=None):
     users = User.objects.prefetch_related("groups").order_by("username")
+    now = timezone.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    labs = Lab.objects.all()
+    published_labs = labs.filter(is_published=True).count()
+    total_labs = labs.count()
+    draft_labs = total_labs - published_labs
+
+    running_sessions = SandboxSession.objects.filter(status=SandboxSession.RUNNING)
+    active_sessions_today = SandboxSession.objects.filter(started_at__gte=today_start)
+
+    hackers = HackPhase.objects.annotate(lab_count=Count("labs"))
+    phases_data = [{"name": h.name, "count": h.lab_count} for h in hackers]
+
+    docker_ok = False
+    container_count = 0
+    try:
+        resp = _docker_api("/info", method="get")
+        if resp:
+            docker_ok = True
+            container_count = resp.get("ContainersRunning", 0)
+    except Exception:
+        pass
+
     return {
         "active_nav": "users",
         "user_role_label": "Administrator",
@@ -83,6 +109,21 @@ def _build_admin_context(current_user_id=None):
             "modules": Module.objects.count(),
             "activities": Activity.objects.count(),
         },
+        "lab_stats": {
+            "total": total_labs,
+            "published": published_labs,
+            "draft": draft_labs,
+        },
+        "session_stats": {
+            "running": running_sessions.count(),
+            "today": active_sessions_today.count(),
+        },
+        "docker_ok": docker_ok,
+        "container_count": container_count,
+        "hack_phases_data": phases_data,
+        "resource_profile_count": ResourceProfile.objects.count(),
+        "container_image_count": ContainerImage.objects.count(),
+        "now": now,
     }
 
 
@@ -199,10 +240,81 @@ def user_dashboard(request):
     profile_form = StudentProfileImageForm(instance=profile)
 
     enrolled = enrolled_labs_for(request.user)
-    completed_labs = 0
+    completed_count = 0
+    enrolled_with_progress = []
+    lab_progress_total = 0
+    lab_progress_earned = 0
     for e in enrolled:
-        if lab_progress_for(request.user, e.lab)["is_complete"]:
-            completed_labs += 1
+        p = lab_progress_for(request.user, e.lab)
+        if p["is_complete"]:
+            completed_count += 1
+            lab_progress_earned += 3
+        else:
+            for s in p.get("stages", []):
+                if s.get("completed"):
+                    lab_progress_earned += 1
+        lab_progress_total += 3
+        enrolled_with_progress.append({"enrollment": e, "progress": p})
+    overall_percent = round((lab_progress_earned / lab_progress_total) * 100) if lab_progress_total else 0
+
+    active_session = SandboxSession.objects.filter(
+        user=request.user, status=SandboxSession.RUNNING
+    ).select_related("lab").first()
+
+    recent_actions = []
+    for sub in FlagSubmission.objects.filter(user=request.user).select_related("lab")[:5]:
+        recent_actions.append({
+            "type": "flag" if sub.is_correct else "wrong",
+            "desc": f"{'Solved' if sub.is_correct else 'Attempted'} flag for {sub.lab.title}",
+            "time": sub.submitted_at,
+            "url": reverse("student_lab_detail", args=[sub.lab.id]),
+        })
+    for ses in SandboxSession.objects.filter(user=request.user).exclude(status=SandboxSession.PENDING).select_related("lab")[:5]:
+        recent_actions.append({
+            "type": "sandbox_stop" if ses.status in (SandboxSession.STOPPED, SandboxSession.EXPIRED) else "sandbox_start",
+            "desc": f"{'Stopped' if ses.status in (SandboxSession.STOPPED, SandboxSession.EXPIRED) else 'Started'} sandbox for {ses.lab.title}",
+            "time": ses.stopped_at or ses.started_at,
+            "url": reverse("student_lab_detail", args=[ses.lab.id]),
+        })
+    for lp in LabProgress.objects.filter(user=request.user, completed_at__isnull=False).select_related("lab")[:5]:
+        recent_actions.append({
+            "type": lp.stage,
+            "desc": f"Completed {lp.get_stage_display()} for {lp.lab.title}",
+            "time": lp.completed_at,
+            "url": reverse("student_lab_detail", args=[lp.lab.id]),
+        })
+    recent_actions.sort(key=lambda x: x["time"], reverse=True)
+    recent_actions = recent_actions[:5]
+
+    now = timezone.now()
+    week_start = now - timezone.timedelta(days=now.weekday())
+    labs_this_week = SandboxSession.objects.filter(user=request.user, started_at__gte=week_start).values("lab").distinct().count()
+
+    session_dates = SandboxSession.objects.filter(user=request.user, status=SandboxSession.STOPPED).dates("started_at", "day", order="DESC")
+    streak = 0
+    if session_dates:
+        check_date = now.date()
+        for d in session_dates:
+            if d == check_date or d == check_date - timezone.timedelta(days=1):
+                streak += 1
+                check_date = d
+            elif d < check_date - timezone.timedelta(days=1):
+                break
+
+    badges = []
+    if completed_count >= 1:
+        badges.append({"icon": "trophy", "label": "First Blood", "desc": "Complete your first lab"})
+    if completed_count >= 3:
+        badges.append({"icon": "zap", "label": "On Fire", "desc": "Complete 3 labs"})
+    if completed_count >= 5:
+        badges.append({"icon": "flame", "label": "Lab Machine", "desc": "Complete 5 labs"})
+    if streak >= 2:
+        badges.append({"icon": "calendar-check", "label": f"{streak}-Day Streak", "desc": "Active on consecutive days"})
+    if labs_this_week >= 3:
+        badges.append({"icon": "activity", "label": "Weekly Warrior", "desc": "Work on 3+ labs in a week"})
+
+    next_lab_obj = next_lab_for(request.user)
+    next_lab_progress = lab_progress_for(request.user, next_lab_obj) if next_lab_obj else None
 
     return render(
         request,
@@ -214,9 +326,18 @@ def user_dashboard(request):
             "profile": profile,
             "profile_form": profile_form,
             "enrolled_labs": enrolled,
+            "enrolled_with_progress": enrolled_with_progress,
             "enrolled_labs_count": enrolled.count(),
-            "completed_labs": completed_labs,
-            "next_lab": next_lab_for(request.user),
+            "completed_labs": completed_count,
+            "overall_percent": overall_percent,
+            "active_session": active_session,
+            "recent_actions": recent_actions,
+            "labs_this_week": labs_this_week,
+            "streak": streak,
+            "badges": badges,
+            "next_lab": next_lab_obj,
+            "next_lab_progress": next_lab_progress,
+            "now": now,
         },
     )
 
@@ -247,6 +368,11 @@ def instructor_dashboard(request):
     total_students = User.objects.exclude(is_staff=True).exclude(groups__name__iexact="Instructor").count()
     total_enrollments = LabEnrollment.objects.filter(lab__instructor=request.user, is_active=True).count()
 
+    active_sessions_total = 0
+    for lab in labs:
+        lab.active_count = SandboxSession.objects.filter(lab=lab, status=SandboxSession.RUNNING).count()
+        active_sessions_total += lab.active_count
+
     return render(
         request,
         "instructor_dashboard.html",
@@ -260,6 +386,7 @@ def instructor_dashboard(request):
             "total_enrollments": total_enrollments,
             "hack_phases": HackPhase.objects.all(),
             "resource_profiles": ResourceProfile.objects.all(),
+            "active_sessions_total": active_sessions_total,
         },
     )
 
@@ -390,6 +517,52 @@ def instructor_lab_edit(request, lab_id):
 
 
 @login_required
+@user_passes_test(_is_instructor)
+def instructor_live_monitor(request):
+    if request.user.is_staff or request.user.is_superuser:
+        sessions = SandboxSession.objects.filter(status=SandboxSession.RUNNING).select_related("user", "lab").order_by("-started_at")
+    else:
+        sessions = SandboxSession.objects.filter(lab__instructor=request.user, status=SandboxSession.RUNNING).select_related("user", "lab").order_by("-started_at")
+
+    total_online = sessions.count()
+    lab_breakdown = {}
+    for s in sessions:
+        lab_breakdown[s.lab.title] = lab_breakdown.get(s.lab.title, 0) + 1
+
+    return render(
+        request,
+        "instructor_live_monitor.html",
+        {
+            "active_nav": "monitor",
+            "user_role_label": "Instructor",
+            "sessions": sessions,
+            "total_online": total_online,
+            "lab_breakdown": lab_breakdown,
+            "now": timezone.now(),
+        },
+    )
+
+
+@login_required
+@user_passes_test(_is_instructor)
+def instructor_lab_sessions(request, lab_id):
+    lab = get_object_or_404(Lab, pk=lab_id, instructor=request.user)
+    sessions = SandboxSession.objects.filter(lab=lab).select_related("user").order_by("-started_at")
+
+    return render(
+        request,
+        "instructor_lab_sessions.html",
+        {
+            "active_nav": "dashboard",
+            "user_role_label": "Instructor",
+            "lab": lab,
+            "sessions": sessions,
+            "now": timezone.now(),
+        },
+    )
+
+
+@login_required
 def instructor_lab_toggle(request, lab_id):
     if request.method != "POST":
         return redirect("instructor_dashboard")
@@ -410,12 +583,6 @@ def instructor_lab_delete(request, lab_id):
     lab.delete()
     messages.success(request, f"Lab '{title}' was deleted.")
     return redirect("instructor_dashboard")
-
-
-@login_required
-def fetch_service_flag(request, service_id):
-    service = get_object_or_404(ScenarioService, pk=service_id)
-    return JsonResponse({"flag": service.default_flag, "name": service.name})
 
 
 @login_required

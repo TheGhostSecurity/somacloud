@@ -60,23 +60,6 @@ class Tool(models.Model):
         return self.name
 
 
-class ScenarioService(models.Model):
-    name = models.CharField(max_length=80, unique=True)
-    slug = models.SlugField(max_length=100, unique=True)
-    description = models.TextField(blank=True)
-    docker_image = models.CharField(max_length=200, blank=True, default="")
-    port = models.PositiveIntegerField(default=80)
-    script_module = models.CharField(max_length=200, blank=True, help_text="Python module path, e.g. scenario_services.sql_injection")
-    default_flag = models.CharField(max_length=500, blank=True, default="", help_text="The flag defined in the script, auto-populated when instructor selects this service.")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["name"]
-
-    def __str__(self):
-        return self.name
-
-
 class ContainerImage(models.Model):
     """A vetted Docker Hub image instructors can attach to a lab."""
 
@@ -111,10 +94,6 @@ class Lab(models.Model):
     resource_profile = models.ForeignKey(ResourceProfile, on_delete=models.PROTECT, related_name="labs")
     terminal_container = models.ForeignKey(ContainerImage, on_delete=models.PROTECT, null=True, blank=True, related_name="terminal_labs", limit_choices_to={"kind": ContainerImage.TERMINAL})
     service_containers = models.ManyToManyField(ContainerImage, related_name="service_labs", blank=True, limit_choices_to={"kind": ContainerImage.SERVICE})
-    # Legacy scenario field is retained so existing labs and migrations continue to work.
-    scenario_service = models.ForeignKey(ScenarioService, on_delete=models.SET_NULL, null=True, blank=True, related_name="labs")
-    sandbox_image = models.CharField(max_length=200, blank=True, default="")
-    sandbox_config = models.TextField(blank=True)
     flag = models.CharField(max_length=500, blank=True, help_text="The flag students must find and submit to complete the lab.")
     flag_hint = models.TextField(blank=True, help_text="Hint shown when a student submits a wrong flag.")
     challenge_type = models.CharField(max_length=16, choices=[("flag", "Flag"), ("question", "Question")], default="flag", help_text="Flag requires finding a hidden value. Question requires answering a quiz.")

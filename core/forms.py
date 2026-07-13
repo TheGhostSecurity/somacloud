@@ -190,8 +190,6 @@ class LabForm(forms.ModelForm):
         }
         help_texts = {
             "theory_content": "Supports Markdown: # headers, - lists, ``` code blocks, **bold**, *italic*.",
-            "terminal_container": "Select the ttyd image students will use in the browser.",
-            "service_containers": "Select one or more vulnerable-service images to run with each sandbox.",
             "notes": "Supports Markdown. Use {{SERVICE_IP}} for the first target, or {{SERVICE_ENDPOINTS}} for all targets.",
             "flag": "The secret flag students must find and submit. For Question challenge type, leave blank.",
             "flag_hint": "Shown when a student submits an incorrect flag.",
@@ -205,15 +203,33 @@ class LabForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         base_css = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
         area_css = base_css + " font-mono"
+
+        self.fields["terminal_container"] = forms.CharField(
+            label="Terminal Container Image",
+            help_text="Docker image tag for the browser terminal, e.g. ghostriley23/kali-ttyd:latest",
+            required=True,
+            widget=forms.TextInput(attrs={"class": base_css, "placeholder": "e.g. ghostriley23/kali-ttyd:latest"}),
+        )
+        self.fields["service_containers"] = forms.CharField(
+            label="Service Container Images",
+            help_text="Docker image tags for vulnerable services, one per line or comma-separated.",
+            required=False,
+            widget=forms.Textarea(attrs={"class": base_css + " h-32 font-mono", "placeholder": "e.g. ghostriley23/vuln-webapp:latest"}),
+        )
+
+        if self.instance and self.instance.pk:
+            if self.instance.terminal_container_id:
+                self.fields["terminal_container"].initial = self.instance.terminal_container.image
+            services_qs = self.instance.service_containers.all()
+            if services_qs:
+                self.fields["service_containers"].initial = "\n".join(s.image for s in services_qs)
+
         hints = {
             "hack_phase": "Run `python manage.py seed_data` if this is empty.",
             "resource_profile": "Run `python manage.py seed_data` if this is empty.",
         }
         for field_name, field in self.fields.items():
-            if field_name == "service_containers":
-                field.widget.attrs["class"] = base_css + " h-32"
-                field.widget.attrs["size"] = "6"
-                field.widget.attrs["multiple"] = "multiple"
+            if field_name in ("terminal_container", "service_containers"):
                 continue
             if field_name in ("theory_content", "notes"):
                 field.widget.attrs["class"] = area_css + " h-24"
@@ -243,10 +259,46 @@ class LabForm(forms.ModelForm):
         except json.JSONDecodeError:
             raise forms.ValidationError("Invalid JSON. Use format: [\"Option A\",\"Option B\",\"Option C\"]")
 
+    def clean_terminal_container(self):
+        value = self.cleaned_data.get("terminal_container", "").strip()
+        if not value:
+            raise forms.ValidationError("A terminal container image is required.")
+        name = value.split("/")[-1].split(":")[0].replace("_", "-").replace(".", "-")
+        container, _ = ContainerImage.objects.get_or_create(
+            image=value,
+            defaults={
+                "name": name,
+                "kind": ContainerImage.TERMINAL,
+                "container_port": 7681,
+                "description": "Auto-created from lab form.",
+            },
+        )
+        return container
+
+    def clean_service_containers(self):
+        value = self.cleaned_data.get("service_containers", "").strip()
+        if not value:
+            return []
+        tags = [t.strip() for t in value.replace(",", "\n").split("\n") if t.strip()]
+        containers = []
+        for tag in tags:
+            name = tag.split("/")[-1].split(":")[0].replace("_", "-").replace(".", "-")
+            container, _ = ContainerImage.objects.get_or_create(
+                image=tag,
+                defaults={
+                    "name": name,
+                    "kind": ContainerImage.SERVICE,
+                    "container_port": 80,
+                    "description": "Auto-created from lab form.",
+                },
+            )
+            containers.append(container)
+        return containers
+
     def clean(self):
         cleaned_data = super().clean()
         if not cleaned_data.get("terminal_container"):
-            self.add_error("terminal_container", "Select a browser-terminal (ttyd) container before saving this lab.")
+            self.add_error("terminal_container", "A terminal container image is required.")
         return cleaned_data
 
 

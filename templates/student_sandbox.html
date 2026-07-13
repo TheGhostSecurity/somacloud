@@ -1,32 +1,39 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block body_class %}bg-[#111827] text-white antialiased{% endblock %}
 {% block header %}{% endblock %}
 {% block main_class %}min-h-screen bg-[#111827]{% endblock %}
-{% block title %}SomaCloud – Sandbox {{ session.lab.title }}{% endblock %}
+{% block title %}SomaCloud – Terminal – {{ session.lab.title }}{% endblock %}
 
 {% block content %}
 <div class="flex min-h-screen flex-col bg-[#111827]">
     <header class="flex h-14 shrink-0 items-center justify-between border-b border-[#1f2937] bg-[#0f172a] px-4">
         <div class="flex items-center gap-3">
-            <a class="text-sm font-semibold text-white hover:text-[#60a5fa]" href="{% url 'student_lab_detail' session.lab.id %}">
-                <i data-lucide="arrow-left" class="mr-1 inline h-4 w-4"></i>
-                {{ session.lab.title }}
-            </a>
-            <span class="text-xs text-[#9ca3af]">Sandbox</span>
+            <span class="text-sm font-semibold text-white">{{ session.lab.title }}</span>
+            <span id="status-badge" class="rounded-full bg-[#22c55e] px-2 py-0.5 text-xs font-semibold text-white">
+                {{ session.get_status_display }}
+            </span>
+            {% if remaining is not None %}
+                <span id="timer" class="font-mono text-sm text-[#9ca3af]">{{ remaining }}s</span>
+            {% endif %}
         </div>
-            <div class="flex items-center gap-4">
-                {% if session.service_endpoints %}
-                    <span class="text-xs text-[#9ca3af]">Target{% if session.service_endpoints|length > 1 %}s{% endif %}: {% for target in session.service_endpoints %}{{ target.name }} ({{ target.ip }}:{{ target.container_port }}){% if not forloop.last %}, {% endif %}{% endfor %}</span>
-                {% endif %}
-                <div class="flex items-center gap-2 text-sm">
-                <span id="status-badge" class="rounded-full bg-[#22c55e] px-2 py-0.5 text-xs font-semibold text-white">
-                    {{ session.get_status_display }}
-                </span>
-                {% if remaining is not None %}
-                    <span id="timer" class="font-mono text-sm text-[#9ca3af]">{{ remaining }}s</span>
-                {% endif %}
-            </div>
+        <div class="flex items-center gap-4">
+            {% if session.service_endpoints %}
+                <div class="hidden items-center gap-1 md:flex">
+                    {% for target in session.service_endpoints %}
+                        <span class="rounded bg-[#1f2937] px-2 py-1 text-xs font-mono text-[#9ca3af]">
+                            {{ target.name }}: {{ target.ip }}:{{ target.container_port }}
+                        </span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% if status == "running" and session.terminal_url %}
+                <a class="rounded bg-[#1f2937] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#374151]" href="{{ session.terminal_url }}" target="_blank" rel="noopener">
+                    <i data-lucide="external-link" class="inline h-3.5 w-3.5"></i>
+                    Pop out
+                </a>
+            {% endif %}
             <form action="{% url 'stop_sandbox_session' session.id %}" method="post">
                 {% csrf_token %}
                 <button class="rounded-md bg-[#ef4444] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#dc2626]" type="submit">
@@ -61,7 +68,7 @@
                     {% else %}
                         <i data-lucide="server" class="mx-auto h-10 w-10 text-[#9ca3af]"></i>
                         <h2 class="mt-4 text-lg font-semibold text-white">No terminal available</h2>
-                        <p class="mt-2 text-sm text-[#9ca3af]">Terminal URL not configured. Check your Docker terminal proxy settings.</p>
+                        <p class="mt-2 text-sm text-[#9ca3af]">Terminal URL not configured.</p>
                     {% endif %}
                 </div>
             </div>

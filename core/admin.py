@@ -18,7 +18,6 @@ from .models import (
     ResourceProfile,
     PortReservation,
     SandboxSession,
-    ScenarioService,
     StudentProfile,
     Tool,
 )
@@ -120,11 +119,6 @@ class ContainerImageAdmin(admin.ModelAdmin):
 class PortReservationAdmin(admin.ModelAdmin):
     list_display = ("port", "session", "created_at")
     readonly_fields = ("port", "session", "created_at")
-
-
-@admin.register(ScenarioService)
-class ScenarioServiceAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "port", "docker_image", "default_flag")
 
 
 @admin.register(FlagSubmission)
