@@ -413,9 +413,14 @@ def update_student_profile_image(request):
 
 @login_required
 def instructor_dashboard(request):
-    labs = Lab.objects.filter(instructor=request.user).select_related("hack_phase", "resource_profile").order_by("-created_at")
+    is_admin = request.user.is_staff or request.user.is_superuser
+    if is_admin:
+        labs = Lab.objects.all().select_related("hack_phase", "resource_profile", "instructor").order_by("-created_at")
+        total_enrollments = LabEnrollment.objects.filter(is_active=True).count()
+    else:
+        labs = Lab.objects.filter(instructor=request.user).select_related("hack_phase", "resource_profile").order_by("-created_at")
+        total_enrollments = LabEnrollment.objects.filter(lab__instructor=request.user, is_active=True).count()
     total_students = User.objects.exclude(is_staff=True).exclude(groups__name__iexact="Instructor").count()
-    total_enrollments = LabEnrollment.objects.filter(lab__instructor=request.user, is_active=True).count()
 
     active_sessions_total = 0
     for lab in labs:

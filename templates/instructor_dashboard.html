@@ -101,6 +101,12 @@
                         <h2 class="font-semibold text-black">My Labs</h2>
                         <p class="text-sm text-[#5c5c5c]">Manage your cyber security labs.</p>
                     </div>
+                    <select id="phaseFilter" class="rounded-md border border-[#e0e0e0] bg-white px-3 py-1.5 text-xs font-medium text-[#424242]">
+                        <option value="">All phases</option>
+                        {% for phase in hack_phases %}
+                            <option value="{{ phase.id }}">{{ phase.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[760px] text-left text-sm">
@@ -116,7 +122,7 @@
                         </thead>
                         <tbody class="divide-y divide-[#ededed]">
                             {% for lab in labs %}
-                                <tr class="hover:bg-[#fafafa]">
+                                <tr class="lab-row hover:bg-[#fafafa]" data-phase="{{ lab.hack_phase.id }}">
                                     <td class="px-6 py-4">
                                         <a class="font-semibold text-black hover:text-[#0067c0]" href="{% url 'student_lab_detail' lab.id %}">{{ lab.title }}</a>
                                         <p class="mt-1 text-xs text-[#5c5c5c]">{{ lab.summary|markdown_inline|default:"No description"|truncatechars:80 }}</p>
@@ -166,6 +172,19 @@
                     </table>
                 </div>
             </section>
+
+            <script>
+                const phaseFilter = document.getElementById('phaseFilter');
+                if (phaseFilter) {
+                    const rows = document.querySelectorAll('.lab-row');
+                    phaseFilter.addEventListener('change', () => {
+                        const phase = phaseFilter.value;
+                        rows.forEach(row => {
+                            row.style.display = (!phase || row.dataset.phase === phase) ? '' : 'none';
+                        });
+                    });
+                }
+            </script>
 
             {% if hack_phases %}
                 <section class="mt-7 overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
