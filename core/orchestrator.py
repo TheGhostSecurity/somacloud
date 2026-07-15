@@ -103,9 +103,9 @@ def _resources(profile, network, port, container_port):
     port_key = f"{container_port}/tcp"
     return {
         "NetworkMode": network,
-        "Memory": profile.memory_mb * 1024 * 1024,
-        "MemorySwap": profile.memory_mb * 1024 * 1024,
-        "NanoCpus": profile.cpu_count * 1_000_000_000,
+        "Memory": int(profile.memory_mb * 1024 * 1024),
+        "MemorySwap": int(profile.memory_mb * 1024 * 1024),
+        "NanoCpus": int(profile.cpu_count * 1_000_000_000),
         "PortBindings": {port_key: [{"HostPort": str(port)}]},
     }
 
