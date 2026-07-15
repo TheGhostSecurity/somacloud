@@ -1051,6 +1051,7 @@ def progress_overview(request):
                     "published_labs": Lab.objects.filter(is_published=True).count(),
                 },
                 "all_labs": labs,
+                "phases": HackPhase.objects.order_by("order", "name"),
             },
         )
 
