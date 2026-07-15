@@ -264,6 +264,8 @@ class LabForm(forms.ModelForm):
         value = self.cleaned_data.get("terminal_container", "").strip()
         if not value:
             raise forms.ValidationError("A terminal container image is required.")
+        if "/" not in value:
+            raise forms.ValidationError("Must be a full Docker image tag (e.g. ghostriley23/kali-ttyd:latest)")
         name = value.split("/")[-1].split(":")[0].replace("_", "-").replace(".", "-")
         container, _ = ContainerImage.objects.get_or_create(
             image=value,
@@ -283,6 +285,8 @@ class LabForm(forms.ModelForm):
         tags = [t.strip() for t in value.replace(",", "\n").split("\n") if t.strip()]
         containers = []
         for tag in tags:
+            if "/" not in tag:
+                raise forms.ValidationError(f"'{tag}' is not a valid Docker image tag (e.g. namespace/repo:tag)")
             name = tag.split("/")[-1].split(":")[0].replace("_", "-").replace(".", "-")
             container, _ = ContainerImage.objects.get_or_create(
                 image=tag,
