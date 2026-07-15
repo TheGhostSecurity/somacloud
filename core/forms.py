@@ -330,7 +330,7 @@ class ResourceProfileForm(forms.ModelForm):
             "description": forms.Textarea(attrs={"rows": 3}),
         }
         help_texts = {
-            "cpu_count": "Number of CPU cores allocated to the sandbox container.",
+            "cpu_count": "CPU cores (e.g. 0.25, 0.5, 1, 2, 4).",
             "memory_mb": "Memory limit in megabytes.",
             "time_limit_minutes": "Maximum session duration in minutes.",
         }

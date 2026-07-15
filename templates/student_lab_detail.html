@@ -15,25 +15,23 @@
                 <a class="text-sm font-semibold text-[#0067c0] hover:underline" href="{% url 'student_labs' %}">&larr; Back to labs</a>
             </div>
 
-            <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
+            <div class="mb-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                <div class="min-w-0 flex-1">
                     <p class="text-sm font-semibold text-[#0067c0]">{{ lab.hack_phase.name }}</p>
                     <h1 class="mt-1 text-2xl font-semibold text-black">{{ lab.title }}</h1>
                     <div class="mt-2 max-w-2xl text-sm leading-6 text-[#424242] prose prose-sm">{{ lab.summary|markdown|default:"" }}</div>
                 </div>
+                {% if not active_session %}
                 <div class="shrink-0">
-                    <div class="rounded-lg bg-white p-4 shadow-sm border border-[#e0e0e0]">
-                        <p class="text-xs font-semibold text-[#5c5c5c]">Resource Profile</p>
-                        <p class="mt-1 font-semibold text-black">{{ lab.resource_profile.name }}</p>
-                        <p class="mt-1 text-xs text-[#424242]">{{ lab.resource_profile.cpu_count }} CPU &middot; {{ lab.resource_profile.memory_mb }} MB RAM &middot; {{ lab.resource_profile.time_limit_minutes }} min</p>
-                        {% if lab.terminal_container %}
-                            <p class="mt-2 text-xs font-semibold text-[#0067c0]">Terminal: {{ lab.terminal_container.name }}</p>
-                        {% endif %}
-                        {% if lab.service_containers.exists %}
-                            <p class="mt-1 text-xs font-semibold text-[#0067c0]">Targets: {% for service in lab.service_containers.all %}{{ service.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
-                        {% endif %}
-                    </div>
+                    <form action="{% url 'launch_sandbox' lab.id %}" method="post" target="_blank">
+                        {% csrf_token %}
+                        <button class="inline-flex items-center gap-2 rounded-md bg-[#0067c0] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#005a9e]" type="submit">
+                            <i data-lucide="play" class="h-4 w-4"></i>
+                            Launch Sandbox
+                        </button>
+                    </form>
                 </div>
+                {% endif %}
             </div>
 
             <div class="mb-6">
@@ -62,7 +60,7 @@
                 <p class="mt-1 text-xs text-[#5c5c5c]">{{ progress.percent }}% complete</p>
             </div>
 
-            <div class="grid gap-6 xl:grid-cols-[1fr_320px]">
+            <div class="grid gap-6 {% if active_session %}xl:grid-cols-[1fr_320px]{% endif %}">
                 <div class="space-y-6">
                     {% if lab.tools.exists %}
                         <section class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
@@ -81,16 +79,37 @@
                         </section>
                     {% endif %}
 
-                    <section class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <section id="theorySection" class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm relative">
+                        <div id="readingProgress" class="absolute top-0 left-0 h-1 bg-[#0067c0] rounded-t-xl transition-all duration-150" style="width:0%"></div>
+
                         <div class="flex items-center justify-between">
-                            <h2 class="font-semibold text-black">Theory</h2>
-                            {% for s in progress.stages %}{% if s.stage == "theory" and s.completed %}
-                                <span class="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold text-[#107c41]">Complete</span>
-                            {% endif %}{% endfor %}
+                            <div class="flex items-center gap-3">
+                                <h2 class="font-semibold text-black">Theory</h2>
+                                <div class="flex items-center gap-1">
+                                    <button class="flex h-6 w-6 items-center justify-center rounded border border-[#d0d0d0] text-xs font-bold text-[#5c5c5c] hover:bg-[#f2f2f2]" onclick="fontSizeChange(-1)" title="Decrease font size" type="button">−</button>
+                                    <button class="flex h-6 w-6 items-center justify-center rounded border border-[#d0d0d0] text-xs font-bold text-[#5c5c5c] hover:bg-[#f2f2f2]" onclick="fontSizeChange(1)" title="Increase font size" type="button">+</button>
+                                    <button id="skipTypewriter" class="ml-1 hidden rounded bg-[#0067c0] px-2 py-1 text-[10px] font-semibold text-white hover:bg-[#005a9e]" type="button">Skip</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span id="typewriterCursor" class="inline-block h-4 w-[2px] bg-[#0067c0] animate-pulse" style="display:none"></span>
+                                {% for s in progress.stages %}{% if s.stage == "theory" and s.completed %}
+                                    <span class="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold text-[#107c41]">Complete</span>
+                                {% endif %}{% endfor %}
+                            </div>
                         </div>
-                        <div class="prose prose-sm mt-4 max-w-none text-[#424242]">
+                        <div id="theoryContent" class="prose prose-sm mt-4 max-w-none text-[#424242]" style="font-size: 1rem;">
                             {{ html_content|safe }}
                         </div>
+                        <script>
+                            let theoryFontSize = parseFloat(localStorage.getItem('theoryFontSize')) || 1;
+                            document.getElementById('theoryContent').style.fontSize = theoryFontSize + 'rem';
+                            function fontSizeChange(delta) {
+                                theoryFontSize = Math.min(Math.max(theoryFontSize + delta * 0.1, 0.75), 2);
+                                document.getElementById('theoryContent').style.fontSize = theoryFontSize + 'rem';
+                                localStorage.setItem('theoryFontSize', theoryFontSize);
+                            }
+                        </script>
                         {% for s in progress.stages %}{% if s.stage == "theory" and not s.completed %}
                             <form action="{% url 'student_complete_theory' lab.id %}" method="post" class="mt-4">
                                 {% csrf_token %}
@@ -98,15 +117,6 @@
                             </form>
                         {% endif %}{% endfor %}
                     </section>
-
-                    {% if rendered_notes %}
-                        <section class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
-                            <h2 class="font-semibold text-black">Lab Notes</h2>
-                            <div class="prose prose-sm mt-4 max-w-none text-[#424242]">
-                                {{ rendered_notes|safe }}
-                            </div>
-                        </section>
-                    {% endif %}
 
                     {% if lab.challenge_type == "flag" and lab.flag %}
                         <section class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
@@ -176,74 +186,228 @@
                     {% endif %}
                 </div>
 
+                {% if active_session %}
                 <div class="space-y-4">
-                    {% if active_session %}
-                        <section class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
-                            <div class="flex items-center justify-between">
-                                <h2 class="font-semibold text-black">Sandbox</h2>
-                                {% if active_session.status == "running" %}
-                                    <span class="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold text-[#107c41]">
-                                        <i data-lucide="server" class="mr-0.5 inline h-3 w-3"></i>
-                                        {{ active_session.get_status_display }}
-                                    </span>
-                                {% elif active_session.status == "pending" %}
-                                    <span class="rounded-full bg-[#fff7ed] px-3 py-1 text-xs font-semibold text-[#c43e1c]">{{ active_session.get_status_display }}</span>
-                                {% else %}
-                                    <span class="rounded-full bg-[#f2f2f2] px-3 py-1 text-xs font-semibold text-[#5c5c5c]">{{ active_session.get_status_display }}</span>
-                                {% endif %}
-                            </div>
-                            <div class="mt-3 rounded-lg bg-[#f7f7f7] p-3 text-sm">
-                                {% if active_session.service_endpoints %}
-                                    <p class="text-xs text-[#5c5c5c]">Target{% if active_session.service_endpoints|length > 1 %}s{% endif %}:</p>
-                                    {% for target in active_session.service_endpoints %}
-                                        <p class="mt-1 font-mono text-xs text-[#424242]">{{ target.name }} — {{ target.ip }}:{{ target.container_port }}</p>
-                                    {% endfor %}
-                                {% endif %}
-                                <p class="mt-2 text-xs text-[#5c5c5c]">Terminal: {{ active_session.container_id|truncatechars:20 }}</p>
-                            </div>
+                    <section class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <h2 class="font-semibold text-black">Sandbox</h2>
                             {% if active_session.status == "running" %}
-                                <a class="mt-3 block rounded-md bg-[#0067c0] px-4 py-2 text-center text-sm font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_sandbox_view' active_session.id %}" target="_blank" rel="noopener">
-                                    <i data-lucide="external-link" class="mr-1 inline h-4 w-4"></i>
-                                    Open Terminal
-                                </a>
-                                <form action="{% url 'stop_sandbox_session' active_session.id %}" method="post" class="mt-2">
-                                    {% csrf_token %}
-                                    <button class="block w-full rounded-md bg-[#ef4444] px-4 py-2 text-center text-sm font-semibold text-white hover:bg-[#dc2626]" type="submit">
-                                        <i data-lucide="square" class="mr-1 inline h-4 w-4"></i>
-                                        Stop Sandbox
-                                    </button>
-                                </form>
+                                <span class="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold text-[#107c41]">
+                                    <i data-lucide="server" class="mr-0.5 inline h-3 w-3"></i>
+                                    {{ active_session.get_status_display }}
+                                </span>
                             {% elif active_session.status == "pending" %}
-                                <p class="mt-3 text-center text-xs text-[#c43e1c]">Launching sandbox…</p>
+                                <span class="rounded-full bg-[#fff7ed] px-3 py-1 text-xs font-semibold text-[#c43e1c]">{{ active_session.get_status_display }}</span>
+                            {% else %}
+                                <span class="rounded-full bg-[#f2f2f2] px-3 py-1 text-xs font-semibold text-[#5c5c5c]">{{ active_session.get_status_display }}</span>
                             {% endif %}
-                        </section>
-                    {% else %}
-                        <section class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
-                            <h2 class="mb-3 font-semibold text-black">Sandbox</h2>
-                            <p class="text-sm text-[#5c5c5c]">Launch a containerized environment to work on this lab.</p>
-                            <div class="mt-3 space-y-2 text-xs text-[#5c5c5c]">
-                                <div class="flex justify-between"><span>CPU</span><span class="font-semibold text-black">{{ lab.resource_profile.cpu_count }} core(s)</span></div>
-                                <div class="flex justify-between"><span>Memory</span><span class="font-semibold text-black">{{ lab.resource_profile.memory_mb }} MB</span></div>
-                                <div class="flex justify-between"><span>Time limit</span><span class="font-semibold text-black">{{ lab.resource_profile.time_limit_minutes }} min</span></div>
-                                {% if lab.terminal_container %}
-                                    <div class="flex justify-between"><span>Terminal</span><span class="font-semibold text-[#0067c0]">{{ lab.terminal_container.name }}</span></div>
-                                {% endif %}
-                                {% if lab.service_containers.exists %}
-                                    <div class="flex justify-between"><span>Targets</span><span class="font-semibold text-[#0067c0]">{{ lab.service_containers.count }}</span></div>
-                                {% endif %}
-                            </div>
-                            <form action="{% url 'launch_sandbox' lab.id %}" method="post" target="_blank" class="mt-4">
+                        </div>
+                        <div class="mt-3 rounded-lg bg-[#f7f7f7] p-3 text-sm">
+                            {% if active_session.service_endpoints %}
+                                <p class="text-xs text-[#5c5c5c]">Target{% if active_session.service_endpoints|length > 1 %}s{% endif %}:</p>
+                                {% for target in active_session.service_endpoints %}
+                                    <p class="mt-1 font-mono text-xs text-[#424242]">{{ target.name }} — {{ target.ip }}:{{ target.container_port }}</p>
+                                {% endfor %}
+                            {% endif %}
+                            <p class="mt-2 text-xs text-[#5c5c5c]">Terminal: {{ active_session.container_id|truncatechars:20 }}</p>
+                        </div>
+                        {% if active_session.status == "running" %}
+                            <a class="mt-3 block rounded-md bg-[#0067c0] px-4 py-2 text-center text-sm font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_sandbox_view' active_session.id %}" target="_blank" rel="noopener">
+                                <i data-lucide="external-link" class="mr-1 inline h-4 w-4"></i>
+                                Open Terminal
+                            </a>
+                            <form action="{% url 'stop_sandbox_session' active_session.id %}" method="post" class="mt-2">
                                 {% csrf_token %}
-                                <button class="block w-full rounded-md bg-[#0067c0] px-4 py-2 text-center text-sm font-semibold text-white hover:bg-[#005a9e]" type="submit">
-                                    <i data-lucide="play" class="mr-1 inline h-4 w-4"></i>
-                                    Launch Sandbox
+                                <button class="block w-full rounded-md bg-[#ef4444] px-4 py-2 text-center text-sm font-semibold text-white hover:bg-[#dc2626]" type="submit">
+                                    <i data-lucide="square" class="mr-1 inline h-4 w-4"></i>
+                                    Stop Sandbox
                                 </button>
                             </form>
-                        </section>
-                    {% endif %}
+                        {% elif active_session.status == "pending" %}
+                            <p class="mt-3 text-center text-xs text-[#c43e1c]">Launching sandbox…</p>
+                        {% endif %}
+                    </section>
                 </div>
+                {% endif %}
             </div>
         </section>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+.theory-reveal { opacity:0; transform:translateY(12px); transition:opacity .5s ease, transform .5s ease; }
+.theory-reveal.revealed { opacity:1; transform:translateY(0); }
+.terminal-block pre { margin:0 !important; border-radius:0 0 8px 8px !important; }
+</style>
+<script>
+(function(){
+    const content = document.getElementById('theoryContent');
+    if (!content || !content.children.length) return;
+
+    /* ── 1. Progressive reveal ── */
+    const items = Array.from(content.children);
+    const skipBtn = document.getElementById('skipTypewriter');
+    const cursor = document.getElementById('typewriterCursor');
+    let idx = 0;
+    let skipped = false;
+
+    items.forEach(el => el.classList.add('theory-reveal'));
+    cursor.style.display = 'inline-block';
+
+    function revealNext() {
+        if (skipped || idx >= items.length) {
+            if (idx >= items.length) cursor.style.display = 'none';
+            if (skipBtn) skipBtn.classList.add('hidden');
+            return;
+        }
+        items[idx].classList.add('revealed');
+        idx++;
+        if (idx < items.length) {
+            setTimeout(revealNext, 400);
+        } else {
+            cursor.style.display = 'none';
+            if (skipBtn) skipBtn.classList.add('hidden');
+        }
+    }
+
+    if (skipBtn) {
+        skipBtn.classList.remove('hidden');
+        skipBtn.addEventListener('click', () => {
+            skipped = true;
+            items.forEach(el => el.classList.add('revealed'));
+            cursor.style.display = 'none';
+            skipBtn.classList.add('hidden');
+        });
+    }
+
+    setTimeout(revealNext, 600);
+
+    /* ── 2. Reading progress bar ── */
+    const progressBar = document.getElementById('readingProgress');
+    const theorySection = document.getElementById('theorySection');
+    if (progressBar && theorySection) {
+        function updateProgress() {
+            const rect = theorySection.getBoundingClientRect();
+            const total = rect.height;
+            const visible = window.innerHeight - rect.top;
+            const pct = Math.min(Math.max((visible / total) * 100, 0), 100);
+            progressBar.style.width = pct + '%';
+        }
+        window.addEventListener('scroll', updateProgress, {passive:true});
+        updateProgress();
+    }
+
+    /* ── 3. Terminal-style code blocks ── */
+    content.querySelectorAll('pre').forEach(pre => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'terminal-block rounded-lg border border-[#1e293b] bg-[#0f172a] mb-4 overflow-hidden';
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between bg-[#1e293b] px-4 py-2';
+        const dots = document.createElement('div');
+        dots.className = 'flex items-center gap-1.5';
+        ['#ef4444','#f59e0b','#22c55e'].forEach(c => {
+            const d = document.createElement('span');
+            d.className = 'inline-block h-2.5 w-2.5 rounded-full';
+            d.style.backgroundColor = c;
+            dots.appendChild(d);
+        });
+        header.appendChild(dots);
+        const actions = document.createElement('div');
+        actions.className = 'flex items-center gap-2';
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'text-[10px] font-semibold text-[#94a3b8] hover:text-white transition-colors';
+        copyBtn.textContent = 'Copy';
+        copyBtn.addEventListener('click', () => {
+            const code = pre.querySelector('code');
+            if (code) {
+                navigator.clipboard.writeText(code.textContent).then(() => {
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                });
+            }
+        });
+        actions.appendChild(copyBtn);
+        const runBtn = document.createElement('button');
+        runBtn.className = 'text-[10px] font-semibold text-[#94a3b8] hover:text-white transition-colors';
+        runBtn.textContent = 'Run';
+        runBtn.addEventListener('click', () => {
+            const output = wrapper.querySelector('.terminal-output') || (() => {
+                const o = document.createElement('div');
+                o.className = 'terminal-output border-t border-[#1e293b] bg-[#0f172a] px-4 py-3 font-mono text-xs text-[#a8b5c8]';
+                o.innerHTML = '<span class="text-[#22c55e]">$</span> <span class="animate-pulse">_</span>';
+                wrapper.appendChild(o);
+                return o;
+            })();
+            output.innerHTML = '<span class="text-[#22c55e]">$</span> Output simulated — run in the sandbox terminal for real execution.';
+        });
+        actions.appendChild(runBtn);
+        header.appendChild(actions);
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(header);
+        wrapper.appendChild(pre);
+    });
+
+    /* ── 4. Scroll reveal for headings (scrollytelling) ── */
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {threshold: 0.2});
+        content.querySelectorAll('h2, h3, h4, img, table').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(20px)';
+            el.style.transition = 'opacity .6s ease, transform .6s ease';
+            observer.observe(el);
+        });
+    }
+
+    /* ── 5. Inline tip popovers ── */
+    content.querySelectorAll('.inline-tip').forEach(tip => {
+        tip.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const existing = tip.querySelector('.tip-popover');
+            if (existing) { existing.remove(); return; }
+            document.querySelectorAll('.tip-popover').forEach(p => p.remove());
+            const pop = document.createElement('div');
+            pop.className = 'tip-popover absolute z-50 mt-2 w-64 rounded-lg border border-[#d0d0d0] bg-white p-3 text-xs text-[#424242] shadow-lg';
+            pop.textContent = tip.dataset.tip;
+            const rect = tip.getBoundingClientRect();
+            const section = tip.closest('section') || document.body;
+            const sRect = section.getBoundingClientRect();
+            pop.style.position = 'fixed';
+            pop.style.left = Math.min(rect.left, window.innerWidth - 270) + 'px';
+            pop.style.top = (rect.bottom + 6) + 'px';
+            document.body.appendChild(pop);
+            const close = () => { pop.remove(); document.removeEventListener('click', close); };
+            setTimeout(() => document.addEventListener('click', close), 0);
+        });
+    });
+
+    /* ── 6. Inline quiz handler ── */
+    content.querySelectorAll('.inline-quiz').forEach(quiz => {
+        const correct = quiz.dataset.correct;
+        const feedback = quiz.querySelector('.quiz-feedback');
+        quiz.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                quiz.querySelectorAll('label').forEach(l => l.classList.remove('bg-green-100','bg-red-100'));
+                if (radio.value === correct) {
+                    radio.closest('label').classList.add('bg-green-100');
+                    if (feedback) { feedback.className = 'quiz-feedback mt-2 text-xs font-semibold text-[#107c41]'; feedback.textContent = '✓ Correct!'; }
+                } else {
+                    radio.closest('label').classList.add('bg-red-100');
+                    if (feedback) { feedback.className = 'quiz-feedback mt-2 text-xs font-semibold text-[#ef4444]'; feedback.textContent = '✗ Not quite — re-read the section above.'; }
+                }
+                quiz.querySelectorAll('input[type="radio"]').forEach(r => { if (r !== radio) r.disabled = true; });
+            });
+        });
+    });
+})();
+</script>
 {% endblock %}

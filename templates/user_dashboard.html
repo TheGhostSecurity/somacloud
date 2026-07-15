@@ -6,7 +6,7 @@
 {% block main_class %}min-h-screen bg-white{% endblock %}
 
 {% block content %}
-<div class="flex min-h-screen flex-col">
+<div class="flex flex-1 flex-col">
     {% include "partials/dashboard_header.html" %}
     <div class="flex min-h-0 flex-1">
         {% include "partials/dashboard_sidebar.html" %}
@@ -132,107 +132,107 @@
                         <div class="rounded-lg border border-white/20 bg-white/10 p-4 backdrop-blur-sm">
                             <p class="text-xs font-semibold text-slate-200">Resource profile</p>
                             <p class="mt-2 font-semibold text-white">{{ next_lab.resource_profile.name }}</p>
-                            <p class="mt-1 text-sm text-slate-200">{{ next_lab.resource_profile.cpu_count }} CPU &middot; {{ next_lab.resource_profile.memory_mb }} MB RAM &middot; {{ next_lab.resource_profile.time_limit_minutes }} min</p>
+                            <p class="mt-1 text-sm text-slate-200">{{ next_lab.resource_profile.cpu_count|floatformat }} CPU &middot; {{ next_lab.resource_profile.memory_mb }} MB RAM &middot; {{ next_lab.resource_profile.time_limit_minutes }} min</p>
                         </div>
                     </div>
                 </section>
             {% endif %}
 
-            <div class="mb-7 grid gap-6 lg:grid-cols-[1fr_320px]">
-                <section>
-                    <div class="mb-3 flex items-center justify-between">
+            <section class="mb-7 overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#ededed] px-6 py-4">
+                    <div class="flex flex-wrap items-center gap-3">
                         <h2 class="text-base font-semibold text-[#424242]">Enrolled labs</h2>
-                        <a class="text-sm font-semibold text-[#0067c0]" href="{% url 'student_labs' %}">Browse all</a>
-                    </div>
-                    <div class="grid gap-3 lg:grid-cols-2">
-                        {% for ew in enrolled_with_progress %}
-                            {% with lab=ew.enrollment.lab progress=ew.progress %}
-                                <a class="visual-lab-card rounded-xl border border-[#e0e0e0] bg-white shadow-sm" href="{% url 'student_lab_detail' lab.id %}">
-                                    <div class="visual-lab-card__image {% cycle 'photo-circuit' 'photo-terminal' 'photo-infrastructure' %}"></div>
-                                    <div class="visual-lab-card__body">
-                                    <div class="flex items-start justify-between gap-4">
-                                        <div>
-                                            <h3 class="font-semibold text-black">{{ lab.title }}</h3>
-                                            <p class="mt-1 text-xs font-semibold text-[#0067c0]">{{ lab.hack_phase.name }}</p>
-                                            <p class="mt-2 line-clamp-2 text-sm leading-6 text-[#5c5c5c]">{{ lab.summary|markdown_inline|default:"Hands-on cyber security lab" }}</p>
-                                        </div>
-                                        <span class="shrink-0 rounded-full bg-[#eaf4ff] px-3 py-1 text-xs font-semibold text-[#0067c0]">{{ lab.resource_profile.name }}</span>
-                                    </div>
-                                    {% if progress.stages %}
-                                        <div class="mt-3">
-                                            <div class="h-1.5 overflow-hidden rounded-full bg-[#e5e7eb]">
-                                                <div class="h-full rounded-full bg-[#107c41] transition-all duration-500" style="width: {{ progress.percent }}%"></div>
-                                            </div>
-                                            <div class="mt-1 flex items-center justify-between text-xs text-[#5c5c5c]">
-                                                <span>{{ progress.percent }}% complete</span>
-                                                <span>{{ progress.completed }}/{{ progress.total }}</span>
-                                            </div>
-                                        </div>
-                                    {% endif %}
-                                    <div class="mt-3 flex flex-wrap gap-1.5">
-                                        {% for tool in lab.tools.all|slice:":3" %}
-                                            <span class="rounded-full bg-[#f2f2f2] px-2 py-0.5 text-xs text-[#424242]">{{ tool.name }}</span>
-                                        {% endfor %}
-                                    </div>
-                                    </div>
-                                </a>
-                            {% endwith %}
-                        {% empty %}
-                            <div class="col-span-full rounded-xl border border-[#e0e0e0] bg-white p-8 text-center shadow-sm">
-                                <svg class="empty-state-svg mx-auto h-24 w-24 text-[#b0b0b0]" viewBox="0 0 80 80" fill="none">
-                                    <rect x="16" y="10" width="48" height="36" rx="3" stroke="currentColor" stroke-width="2"/>
-                                    <rect x="20" y="14" width="40" height="28" rx="2" fill="currentColor" opacity=".08"/>
-                                    <path d="M26 24h28M26 30h20M26 36h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".3"/>
-                                    <path d="M34 50L40 56l12-14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                    <circle cx="63" cy="20" r="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"/>
-                                    <path d="M63 14v12M57 20h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"/>
-                                </svg>
-                                <h3 class="mt-4 text-lg font-semibold text-black">No enrolled labs yet</h3>
-                                <p class="mt-2 text-sm leading-6 text-[#5c5c5c]">Browse cyber security labs by hacking phase and enroll to start.</p>
-                                <a class="mt-4 inline-flex rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_labs' %}">Browse labs</a>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </section>
-
-                {% if recent_actions %}
-                    <section class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
-                        <h2 class="mb-3 text-base font-semibold text-[#424242]">Recent activity</h2>
-                        <div class="space-y-3">
-                            {% for action in recent_actions %}
-                                <a class="flex items-start gap-3 text-sm hover:opacity-80" href="{{ action.url }}">
-                                    <span class="mt-0.5 shrink-0">
-                                        {% if action.type == "flag" or action.type == "complete" %}
-                                            <i data-lucide="check-circle" class="h-4 w-4 text-[#107c41]"></i>
-                                        {% elif action.type == "wrong" %}
-                                            <i data-lucide="x-circle" class="h-4 w-4 text-[#ef4444]"></i>
-                                        {% elif action.type == "sandbox_start" %}
-                                            <i data-lucide="play-circle" class="h-4 w-4 text-[#0067c0]"></i>
-                                        {% elif action.type == "sandbox_stop" %}
-                                            <i data-lucide="stop-circle" class="h-4 w-4 text-[#5c5c5c]"></i>
-                                        {% elif action.type == "theory" %}
-                                            <i data-lucide="book-open" class="h-4 w-4 text-[#8b5cf6]"></i>
-                                        {% elif action.type == "sandbox" %}
-                                            <i data-lucide="terminal" class="h-4 w-4 text-[#0067c0]"></i>
-                                        {% elif action.type == "challenge" %}
-                                            <i data-lucide="flag" class="h-4 w-4 text-[#f59e0b]"></i>
-                                        {% else %}
-                                            <i data-lucide="circle" class="h-4 w-4 text-[#d0d0d0]"></i>
-                                        {% endif %}
-                                    </span>
-                                    <div class="min-w-0">
-                                        <p class="text-[#1f1f1f]">{{ action.desc }}</p>
-                                        <p class="mt-0.5 text-xs text-[#5c5c5c]">{{ action.time|timesince }} ago</p>
-                                    </div>
-                                </a>
-                                {% if not forloop.last %}
-                                    <div class="border-t border-[#f0f0f0]"></div>
-                                {% endif %}
+                        <select id="phaseFilter" class="rounded-md border border-[#e0e0e0] bg-white px-3 py-1.5 text-xs font-medium text-[#424242]">
+                            <option value="">All phases</option>
+                            {% for phase in phases %}
+                                <option value="{{ phase.id }}">{{ phase.name }}</option>
                             {% endfor %}
-                        </div>
-                    </section>
-                {% endif %}
-            </div>
+                        </select>
+                    </div>
+                    <a class="text-sm font-semibold text-[#0067c0] hover:underline" href="{% url 'student_labs' %}">Browse all</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="enrolledTable" class="w-full min-w-[700px] text-left text-sm">
+                        <thead class="border-b border-[#ededed] text-[#424242]">
+                            <tr>
+                                <th class="px-6 py-3 font-semibold">Lab</th>
+                                <th class="px-6 py-3 font-semibold">Phase</th>
+                                <th class="px-6 py-3 font-semibold">Resource</th>
+                                <th class="px-6 py-3 font-semibold">Progress</th>
+                                <th class="px-6 py-3 font-semibold">Status</th>
+                                <th class="px-6 py-3 font-semibold"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#ededed]">
+                            {% for ew in enrolled_with_progress %}
+                                {% with lab=ew.enrollment.lab progress=ew.progress %}
+                                    <tr class="lab-row hover:bg-[#fafafa]" data-phase="{{ lab.hack_phase.id }}" data-name="{{ lab.title|lower }}">
+                                        <td class="px-6 py-4">
+                                            <a class="font-semibold text-black hover:text-[#0067c0]" href="{% url 'student_lab_detail' lab.id %}">{{ lab.title }}</a>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="inline-flex items-center gap-1.5 rounded-full bg-[#eaf4ff] px-2.5 py-0.5 text-xs font-semibold text-[#0067c0]">
+                                                <i data-lucide="layers" class="h-3 w-3"></i>
+                                                {{ lab.hack_phase.name }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-xs text-[#5c5c5c]">{{ lab.resource_profile.name }}</td>
+                                        <td class="px-6 py-4">
+                                            {% if progress.stages %}
+                                                <div class="flex items-center gap-2">
+                                                    <div class="h-1.5 w-20 overflow-hidden rounded-full bg-[#e5e7eb]">
+                                                        <div class="h-full rounded-full bg-[#107c41] transition-all duration-500" style="width: {{ progress.percent }}%"></div>
+                                                    </div>
+                                                    <span class="text-xs font-medium text-[#424242]">{{ progress.percent }}%</span>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-xs text-[#8c8c8c]">—</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            {% if progress.is_complete %}
+                                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-[#107c41]">
+                                                    <i data-lucide="check-circle" class="h-3.5 w-3.5"></i> Complete
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-[#c43e1c]">
+                                                    <i data-lucide="play-circle" class="h-3.5 w-3.5"></i> In progress
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <a class="inline-flex items-center gap-1 rounded-md bg-[#0067c0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_lab_detail' lab.id %}">
+                                                Open
+                                                <i data-lucide="arrow-right" class="h-3 w-3"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endwith %}
+                            {% empty %}
+                                <tr>
+                                    <td class="px-6 py-10 text-center text-[#5c5c5c]" colspan="6">
+                                        <i data-lucide="book-open" class="mx-auto mb-2 h-8 w-8"></i>
+                                        <p>No enrolled labs yet.</p>
+                                        <a class="mt-2 inline-block text-sm font-semibold text-[#0067c0] hover:underline" href="{% url 'student_labs' %}">Browse labs</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <script>
+                const phaseFilter = document.getElementById('phaseFilter');
+                const rows = document.querySelectorAll('#enrolledTable .lab-row');
+
+                phaseFilter.addEventListener('change', () => {
+                    const phase = phaseFilter.value;
+                    rows.forEach(row => {
+                        row.style.display = (!phase || row.dataset.phase === phase) ? '' : 'none';
+                    });
+                });
+            </script>
         </section>
     </div>
 </div>

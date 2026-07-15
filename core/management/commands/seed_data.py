@@ -5,20 +5,22 @@ from core.models import HackPhase, ResourceProfile, Tool
 
 
 DEFAULT_PHASES = [
-    {"name": "Footprinting & Reconnaissance", "slug": "footprinting-recon", "description": "WHOIS, DNS enumeration, website fingerprinting, robots.txt analysis, and passive information gathering.", "order": 1},
-    {"name": "Scanning Networks", "slug": "scanning-networks", "description": "Ping sweep, port scanning, service detection, OS fingerprinting, and network mapping.", "order": 2},
-    {"name": "Enumeration", "slug": "enumeration", "description": "HTTP, FTP, SMB, SSH, and user enumeration to extract detailed service info.", "order": 3},
-    {"name": "Vulnerability Analysis", "slug": "vulnerability-analysis", "description": "Discovery of SQL injection, XSS, authentication weaknesses, file upload flaws, and command injection.", "order": 4},
-    {"name": "Exploitation", "slug": "exploitation", "description": "Active exploitation of SQL injection, XSS, broken authentication, file upload, command injection, and LFI/RFI services.", "order": 5},
-    {"name": "Post-Exploitation", "slug": "post-exploitation", "description": "Read sensitive files, privilege escalation basics, password hash discovery, log inspection, and evidence collection.", "order": 6},
-    {"name": "Reporting & Remediation", "slug": "reporting-remediation", "description": "Capture the flag, submit findings, explain the vulnerability, recommend fixes, and complete the assessment.", "order": 7},
+    {"name": "Kali Linux File System", "slug": "kali-linux-file-system", "description": "Navigate the Linux file system, understand permissions, and get comfortable with the terminal before moving to enumeration.", "order": 1},
+    {"name": "Footprinting & Reconnaissance", "slug": "footprinting-recon", "description": "WHOIS, DNS enumeration, website fingerprinting, robots.txt analysis, and passive information gathering.", "order": 2},
+    {"name": "Scanning Networks", "slug": "scanning-networks", "description": "Ping sweep, port scanning, service detection, OS fingerprinting, and network mapping.", "order": 3},
+    {"name": "Enumeration", "slug": "enumeration", "description": "HTTP, FTP, SMB, SSH, and user enumeration to extract detailed service info.", "order": 4},
+    {"name": "Vulnerability Analysis", "slug": "vulnerability-analysis", "description": "Discovery of SQL injection, XSS, authentication weaknesses, file upload flaws, and command injection.", "order": 5},
+    {"name": "Exploitation", "slug": "exploitation", "description": "Active exploitation of SQL injection, XSS, broken authentication, file upload, command injection, and LFI/RFI services.", "order": 6},
+    {"name": "Post-Exploitation", "slug": "post-exploitation", "description": "Read sensitive files, privilege escalation basics, password hash discovery, log inspection, and evidence collection.", "order": 7},
+    {"name": "Reporting & Remediation", "slug": "reporting-remediation", "description": "Capture the flag, submit findings, explain the vulnerability, recommend fixes, and complete the assessment.", "order": 8},
+    {"name": "Extras", "slug": "extras", "description": "Additional challenges, CTFs, and bonus labs beyond the core curriculum.", "order": 9},
 ]
 
 DEFAULT_RESOURCES = [
-    {"name": "Light", "cpu_count": 1, "memory_mb": 512, "time_limit_minutes": 15, "description": "Basic scanning and enumeration tasks."},
-    {"name": "Medium", "cpu_count": 2, "memory_mb": 1024, "time_limit_minutes": 30, "description": "Standard exploitation and brute-force labs."},
-    {"name": "Heavy", "cpu_count": 4, "memory_mb": 2048, "time_limit_minutes": 45, "description": "Resource-intensive cracking and web app testing."},
-    {"name": "Ultra", "cpu_count": 8, "memory_mb": 4096, "time_limit_minutes": 60, "description": "Full network simulation with multiple targets."},
+    {"name": "Light", "cpu_count": 0.25, "memory_mb": 256, "time_limit_minutes": 15, "description": "Basic scanning and enumeration tasks."},
+    {"name": "Medium", "cpu_count": 0.5, "memory_mb": 512, "time_limit_minutes": 30, "description": "Standard exploitation and brute-force labs."},
+    {"name": "Heavy", "cpu_count": 1, "memory_mb": 1024, "time_limit_minutes": 45, "description": "Resource-intensive cracking and web app testing."},
+    {"name": "Ultra", "cpu_count": 2, "memory_mb": 2048, "time_limit_minutes": 60, "description": "Full network simulation with multiple targets."},
 ]
 
 DEFAULT_TOOLS = [

@@ -2,11 +2,11 @@
 
 {% block body_class %}bg-[#0b1220] text-white antialiased{% endblock %}
 {% block header %}{% endblock %}
-{% block main_class %}h-screen overflow-hidden bg-[#0b1220]{% endblock %}
+{% block main_class %}h-screen overflow-hidden bg-[#0b1220] m-0 p-0{% endblock %}
 {% block title %}SomaCloud – Lab Workspace – {{ session.lab.title }}{% endblock %}
 
 {% block content %}
-<div class="flex h-screen flex-col bg-[#0b1220]">
+<div class="flex h-full flex-col bg-[#0b1220]">
     <header class="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[#26334a] bg-[#111b2d] px-3 md:px-4">
         <div class="flex min-w-0 items-center gap-3">
             <a href="{% url 'student_lab_detail' session.lab.id %}" class="grid h-8 w-8 shrink-0 place-items-center rounded text-[#b8c5d9] hover:bg-[#22314a] hover:text-white" aria-label="Back to lab">

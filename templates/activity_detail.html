@@ -32,7 +32,7 @@
                     </span>
                     <div>
                         <p class="font-semibold text-black">{{ activity.resource_profile.name }}</p>
-                        <p class="text-sm text-[#5c5c5c]">{{ activity.resource_profile.cpu_count }} CPU &middot; {{ activity.resource_profile.memory_mb }} MB RAM &middot; {{ activity.resource_profile.time_limit_minutes }} minutes</p>
+                        <p class="text-sm text-[#5c5c5c]">{{ activity.resource_profile.cpu_count|floatformat }} CPU &middot; {{ activity.resource_profile.memory_mb }} MB RAM &middot; {{ activity.resource_profile.time_limit_minutes }} minutes</p>
                     </div>
                 </div>
             </div>

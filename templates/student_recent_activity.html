@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load markdown_extras %}
+
+{% block body_class %}bg-white text-[#1f1f1f] antialiased{% endblock %}
+{% block header %}{% endblock %}
+{% block main_class %}min-h-screen bg-white{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen flex-col">
+    {% include "partials/dashboard_header.html" %}
+    <div class="flex min-h-0 flex-1">
+        {% include "partials/dashboard_sidebar.html" %}
+        <section class="min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
+            <div class="mb-6">
+                <p class="text-sm font-semibold text-[#0067c0]">Student Dashboard</p>
+                <h1 class="mt-1 text-2xl font-semibold text-black">Recent Activity</h1>
+            </div>
+
+            <section class="overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[600px] text-left text-sm">
+                        <thead class="border-b border-[#ededed] text-[#424242]">
+                            <tr>
+                                <th class="px-6 py-4 font-semibold">Activity</th>
+                                <th class="px-6 py-4 font-semibold">Lab</th>
+                                <th class="px-6 py-4 font-semibold">Detail</th>
+                                <th class="px-6 py-4 font-semibold">When</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#ededed]">
+                            {% for action in actions %}
+                            <tr class="hover:bg-[#fafafa]">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <span class="shrink-0">
+                                            {% if action.type == "flag" or action.type == "complete" %}
+                                                <i data-lucide="check-circle" class="h-4 w-4 text-[#107c41]"></i>
+                                            {% elif action.type == "wrong" %}
+                                                <i data-lucide="x-circle" class="h-4 w-4 text-[#ef4444]"></i>
+                                            {% elif action.type == "sandbox_start" %}
+                                                <i data-lucide="play-circle" class="h-4 w-4 text-[#0067c0]"></i>
+                                            {% elif action.type == "sandbox_stop" %}
+                                                <i data-lucide="stop-circle" class="h-4 w-4 text-[#5c5c5c]"></i>
+                                            {% elif action.type == "theory" %}
+                                                <i data-lucide="book-open" class="h-4 w-4 text-[#8b5cf6]"></i>
+                                            {% else %}
+                                                <i data-lucide="circle" class="h-4 w-4 text-[#d0d0d0]"></i>
+                                            {% endif %}
+                                        </span>
+                                        <span class="font-medium text-black">{{ action.desc }}</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <a class="font-semibold text-[#0067c0] hover:underline" href="{% url 'student_lab_detail' action.lab.id %}">{{ action.lab.title }}</a>
+                                </td>
+                                <td class="px-6 py-4 text-xs text-[#5c5c5c]">{{ action.detail }}</td>
+                                <td class="px-6 py-4 text-xs text-[#5c5c5c]">{{ action.time|timesince }} ago</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td class="px-6 py-10 text-center text-[#5c5c5c]" colspan="4">
+                                    <i data-lucide="history" class="mx-auto mb-2 h-8 w-8"></i>
+                                    <p>No recent activity.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </div>
+</div>
+{% endblock %}

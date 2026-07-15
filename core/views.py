@@ -1,5 +1,11 @@
+import io
 import json
 import logging
+from datetime import timedelta
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
@@ -316,6 +322,8 @@ def user_dashboard(request):
     next_lab_obj = next_lab_for(request.user)
     next_lab_progress = lab_progress_for(request.user, next_lab_obj) if next_lab_obj else None
 
+    phases = HackPhase.objects.order_by("order", "name")
+
     return render(
         request,
         "user_dashboard.html",
@@ -335,9 +343,50 @@ def user_dashboard(request):
             "labs_this_week": labs_this_week,
             "streak": streak,
             "badges": badges,
+            "phases": phases,
             "next_lab": next_lab_obj,
             "next_lab_progress": next_lab_progress,
             "now": now,
+        },
+    )
+
+
+@login_required
+def student_recent_activity(request):
+    actions = []
+    for sub in FlagSubmission.objects.filter(user=request.user).select_related("lab")[:20]:
+        actions.append({
+            "type": "flag" if sub.is_correct else "wrong",
+            "desc": f"{'Solved' if sub.is_correct else 'Attempted'} flag for {sub.lab.title}",
+            "time": sub.submitted_at,
+            "lab": sub.lab,
+            "detail": sub.submitted_flag[:60],
+        })
+    for ses in SandboxSession.objects.filter(user=request.user).exclude(status=SandboxSession.PENDING).select_related("lab")[:20]:
+        actions.append({
+            "type": "sandbox_stop" if ses.status in (SandboxSession.STOPPED, SandboxSession.EXPIRED) else "sandbox_start",
+            "desc": f"{'Stopped' if ses.status in (SandboxSession.STOPPED, SandboxSession.EXPIRED) else 'Started'} sandbox for {ses.lab.title}",
+            "time": ses.stopped_at or ses.started_at,
+            "lab": ses.lab,
+            "detail": ses.get_status_display(),
+        })
+    for lp in LabProgress.objects.filter(user=request.user, completed_at__isnull=False).select_related("lab")[:20]:
+        actions.append({
+            "type": lp.stage,
+            "desc": f"Completed {lp.get_stage_display()} for {lp.lab.title}",
+            "time": lp.completed_at,
+            "lab": lp.lab,
+            "detail": "",
+        })
+    actions.sort(key=lambda x: x["time"], reverse=True)
+
+    return render(
+        request,
+        "student_recent_activity.html",
+        {
+            "active_nav": "activity",
+            "user_role_label": "Student",
+            "actions": actions,
         },
     )
 
@@ -545,6 +594,150 @@ def instructor_live_monitor(request):
 
 @login_required
 @user_passes_test(_is_instructor)
+def instructor_student_analytics(request, user_id=None):
+    if user_id is None:
+        students = User.objects.filter(groups__name__iexact="Instructor").exclude(pk__in=[]) | User.objects.filter(is_staff=False, is_superuser=False)
+        students = students.exclude(groups__name__iexact="Instructor").exclude(is_staff=True).exclude(is_superuser=True).order_by("username")
+        return render(
+            request,
+            "instructor_student_analytics.html",
+            {
+                "active_nav": "analytics",
+                "user_role_label": "Instructor",
+                "students": students,
+                "is_list_view": True,
+            },
+        )
+
+    student = get_object_or_404(User, pk=user_id)
+    sessions = SandboxSession.objects.filter(user=student).select_related("lab").order_by("-started_at")
+    progress = LabProgress.objects.filter(user=student).select_related("lab").order_by("-completed_at")
+    submissions = FlagSubmission.objects.filter(user=student).select_related("lab").order_by("-submitted_at")
+
+    total_labs = LabEnrollment.objects.filter(user=student, is_active=True).count()
+    completed_labs = LabProgress.objects.filter(user=student, stage=LabProgress.COMPLETE, completed_at__isnull=False).count()
+    total_sessions = sessions.count()
+    running_sessions = sessions.filter(status=SandboxSession.RUNNING).count()
+    flag_solved = submissions.filter(is_correct=True).values("lab").distinct().count()
+
+    timeline = []
+    for s in sessions:
+        timeline.append({
+            "type": "session",
+            "icon": "server",
+            "label": f"Sandbox {'started' if s.status == SandboxSession.RUNNING else s.status}",
+            "detail": s.lab.title,
+            "time": s.started_at,
+        })
+    for p in progress:
+        if p.completed_at:
+            timeline.append({
+                "type": "progress",
+                "icon": "check-circle",
+                "label": f"{p.get_stage_display()} completed",
+                "detail": p.lab.title,
+                "time": p.completed_at,
+            })
+    for sub in submissions:
+        timeline.append({
+            "type": "flag",
+            "icon": "flag" if sub.is_correct else "x-circle",
+            "label": f"Flag {'correct' if sub.is_correct else 'incorrect'}",
+            "detail": f"{sub.lab.title}: {sub.submitted_flag[:40]}",
+            "time": sub.submitted_at,
+        })
+    timeline.sort(key=lambda x: x["time"], reverse=True)
+
+    return render(
+        request,
+        "instructor_student_analytics.html",
+        {
+            "active_nav": "analytics",
+            "user_role_label": "Instructor",
+            "student": student,
+            "sessions": sessions,
+            "progress": progress,
+            "submissions": submissions,
+            "total_labs": total_labs,
+            "completed_labs": completed_labs,
+            "total_sessions": total_sessions,
+            "running_sessions": running_sessions,
+            "flag_solved": flag_solved,
+            "timeline": timeline,
+            "now": timezone.now(),
+        },
+    )
+
+
+@login_required
+@user_passes_test(_is_instructor)
+def analytics_chart_progress(request, user_id):
+    student = get_object_or_404(User, pk=user_id)
+    progress = LabProgress.objects.filter(user=student, completed_at__isnull=False).select_related("lab")
+
+    stages_count = {"Theory": 0, "Sandbox": 0, "Challenge": 0, "Complete": 0}
+    for p in progress:
+        name = p.get_stage_display()
+        stages_count[name] = stages_count.get(name, 0) + 1
+
+    fig, ax = plt.subplots(figsize=(5, 3))
+    stages = list(stages_count.keys())
+    counts = list(stages_count.values())
+    colors = ["#0067c0", "#107c41", "#d99322", "#5c5c5c"]
+    bars = ax.bar(stages, counts, color=colors[:len(stages)])
+    ax.set_ylabel("Labs")
+    ax.set_title("Progress by Stage", fontsize=11, fontweight="semibold")
+    for bar, count in zip(bars, counts):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1, str(count),
+                ha="center", va="bottom", fontsize=10)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    plt.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=100)
+    plt.close(fig)
+    buf.seek(0)
+    from django.http import HttpResponse
+    return HttpResponse(buf.getvalue(), content_type="image/png")
+
+
+@login_required
+@user_passes_test(_is_instructor)
+def analytics_chart_sessions(request, user_id):
+    student = get_object_or_404(User, pk=user_id)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    sessions = SandboxSession.objects.filter(user=student, started_at__gte=thirty_days_ago)
+
+    daily = {}
+    for s in sessions:
+        day = s.started_at.strftime("%b %d")
+        daily[day] = daily.get(day, 0) + 1
+
+    fig, ax = plt.subplots(figsize=(5, 3))
+    days = list(daily.keys())
+    counts = list(daily.values())
+    if days:
+        ax.fill_between(range(len(days)), counts, alpha=0.3, color="#0067c0")
+        ax.plot(range(len(days)), counts, color="#0067c0", linewidth=2, marker="o", markersize=4)
+        ax.set_xticks(range(len(days)))
+        ax.set_xticklabels(days, rotation=45, ha="right", fontsize=8)
+    ax.set_ylabel("Sessions")
+    ax.set_title("Session Activity (30 days)", fontsize=11, fontweight="semibold")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    plt.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=100)
+    plt.close(fig)
+    buf.seek(0)
+    from django.http import HttpResponse
+    return HttpResponse(buf.getvalue(), content_type="image/png")
+
+
+@login_required
+@user_passes_test(_is_instructor)
 def instructor_lab_sessions(request, lab_id):
     lab = get_object_or_404(Lab, pk=lab_id, instructor=request.user)
     sessions = SandboxSession.objects.filter(lab=lab).select_related("user").order_by("-started_at")
@@ -632,21 +825,6 @@ def student_lab_detail(request, lab_id):
     if lab.theory_content:
         html_content = render_markdown(lab.theory_content)
 
-    rendered_notes = ""
-    if lab.notes:
-        rendered_notes = lab.notes
-        if active_session and active_session.service_ip:
-            rendered_notes = rendered_notes.replace("{{SERVICE_IP}}", active_session.service_ip)
-            endpoints = ", ".join(
-                f"{item['name']} ({item['ip']}:{item['container_port']})"
-                for item in active_session.service_endpoints
-            )
-            rendered_notes = rendered_notes.replace("{{SERVICE_ENDPOINTS}}", endpoints)
-        else:
-            rendered_notes = rendered_notes.replace("{{SERVICE_IP}}", "[service IP will appear after launching sandbox]")
-            rendered_notes = rendered_notes.replace("{{SERVICE_ENDPOINTS}}", "[service endpoints will appear after launching sandbox]")
-        rendered_notes = render_markdown(rendered_notes)
-
     last_submission = FlagSubmission.objects.filter(user=request.user, lab=lab).order_by("-submitted_at").first()
     recent_correct = FlagSubmission.objects.filter(user=request.user, lab=lab, is_correct=True).exists()
 
@@ -660,7 +838,6 @@ def student_lab_detail(request, lab_id):
             "progress": progress,
             "active_session": active_session,
             "html_content": html_content,
-            "rendered_notes": rendered_notes,
             "last_submission": last_submission,
             "recent_correct": recent_correct,
         },
@@ -881,6 +1058,7 @@ def progress_overview(request):
             completed_count += 1
 
     total = enrolled.count()
+    phases = HackPhase.objects.order_by("order", "name")
     return render(
         request,
         "progress_overview.html",
@@ -892,6 +1070,7 @@ def progress_overview(request):
                 "completed_labs": completed_count,
                 "percent": round((completed_count / total) * 100) if total else 0,
             },
+            "phases": phases,
             "lab_progress_data": lab_progress_data,
         },
     )

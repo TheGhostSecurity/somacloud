@@ -39,7 +39,7 @@
                             {% for p in profiles %}
                                 <tr class="hover:bg-[#fafafa]">
                                     <td class="px-6 py-4 font-semibold text-black">{{ p.name }}</td>
-                                    <td class="px-6 py-4 text-[#424242]">{{ p.cpu_count }} core{{ p.cpu_count|pluralize }}</td>
+                                    <td class="px-6 py-4 text-[#424242]">{{ p.cpu_count|floatformat }} core{{ p.cpu_count|pluralize }}</td>
                                     <td class="px-6 py-4 text-[#424242]">{{ p.memory_mb }} MB</td>
                                     <td class="px-6 py-4 text-[#424242]">{{ p.time_limit_minutes }} min</td>
                                     <td class="px-6 py-4 text-[#5c5c5c]">{{ p.description|default:"—" }}</td>

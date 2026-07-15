@@ -21,7 +21,7 @@ class InstructorProfile(models.Model):
 
 class ResourceProfile(models.Model):
     name = models.CharField(max_length=80, unique=True)
-    cpu_count = models.PositiveSmallIntegerField(default=1)
+    cpu_count = models.DecimalField(max_digits=4, decimal_places=2, default=1)
     memory_mb = models.PositiveIntegerField(default=256)
     time_limit_minutes = models.PositiveIntegerField(default=5)
     description = models.TextField(blank=True)

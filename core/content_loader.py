@@ -14,16 +14,42 @@ def relative_content_path(path):
     return str(path.relative_to(settings.BASE_DIR)).replace("\\", "/")
 
 
-INLINE_RE = re.compile(r"(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)")
+INLINE_RE = re.compile(r"(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|:tip\[([^\]]+)\]\{([^}]+)\}|:q\[([^\]]+)\]\{([^}]+)\})")
+
+
+def _render_tip(visible, content):
+    escaped = conditional_escape(content)
+    return f'<span class="inline-tip cursor-pointer text-[#0067c0] underline decoration-dotted underline-offset-2" data-tip="{escaped}">{conditional_escape(visible)}<sup class="ml-0.5 text-[10px] font-bold">?</sup></span>'
+
+
+def _render_question(question, options_raw):
+    parts = [conditional_escape(p.strip()) for p in options_raw.split("|")]
+    if len(parts) < 2:
+        return conditional_escape(question)
+    correct = parts[-1]
+    choices = parts[:-1]
+    qid = f"iq-{hash(question) & 0xFFFFFFFF}"
+    html = f'<div class="inline-quiz my-4 rounded-lg border border-[#d0d0d0] bg-[#fafafa] p-4" data-correct="{conditional_escape(correct)}" data-qid="{qid}">'
+    html += f'<p class="mb-2 text-sm font-semibold text-black">\u2753 {conditional_escape(question)}</p>'
+    for i, choice in enumerate(choices):
+        html += f'<label class="flex items-center gap-2 rounded px-3 py-1.5 text-sm text-[#424242] hover:bg-[#f0f0f0] cursor-pointer"><input type="radio" name="{qid}" value="{conditional_escape(choice)}" class="text-[#0067c0]"> {choice}</label>'
+    html += f'<p class="quiz-feedback mt-2 hidden text-xs font-semibold"></p></div>'
+    return html
 
 
 def inline_format(text):
     def replacer(m):
-        if m.group(1).startswith("**"):
+        if m.group(2) is not None:
             return f"<strong>{m.group(2)}</strong>"
-        if m.group(1).startswith("*"):
+        if m.group(3) is not None:
             return f"<em>{m.group(3)}</em>"
-        return f"<code>{m.group(4)}</code>"
+        if m.group(4) is not None:
+            return f"<code>{m.group(4)}</code>"
+        if m.group(5) is not None:
+            return _render_tip(m.group(5), m.group(6))
+        if m.group(7) is not None:
+            return _render_question(m.group(7), m.group(8))
+        return m.group(0)
     return mark_safe(INLINE_RE.sub(replacer, conditional_escape(text)))
 
 

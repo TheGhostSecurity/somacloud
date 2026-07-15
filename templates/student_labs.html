@@ -16,14 +16,20 @@
                 <h1 class="mt-1 text-2xl font-semibold text-black">Choose a lab by hacking phase</h1>
             </div>
 
-            {% for phase in phases %}
-                <section class="mb-8">
-                    <div class="mb-3 flex items-center gap-3">
-                        <h2 class="text-lg font-semibold text-black">{{ phase.name }}</h2>
-                        <span class="rounded-full bg-[#eaf4ff] px-3 py-0.5 text-xs font-semibold text-[#0067c0]">{{ phase.labs.count }} lab{{ phase.labs.count|pluralize }}</span>
-                    </div>
-                    <p class="mb-4 text-sm text-[#5c5c5c]">{{ phase.description|default:"Explore labs in this phase" }}</p>
+            <div class="mb-6 flex gap-1 overflow-x-auto border-b border-[#e0e0e0]">
+                {% for phase in phases %}
+                    <button class="phase-tab whitespace-nowrap px-4 py-2.5 text-sm font-semibold text-[#5c5c5c] hover:text-black border-b-2 border-transparent -mb-px transition-colors"
+                            data-phase="{{ phase.id }}"
+                            onclick="switchPhase(this)">
+                        {{ phase.name }}
+                        <span class="ml-1.5 rounded-full bg-[#eaf4ff] px-2 py-0.5 text-xs text-[#0067c0]">{{ phase.labs.count }}</span>
+                    </button>
+                {% endfor %}
+            </div>
 
+            {% for phase in phases %}
+                <div class="phase-content hidden" data-phase="{{ phase.id }}">
+                    <p class="mb-4 text-sm text-[#5c5c5c]">{{ phase.description|default:"Explore labs in this phase" }}</p>
                     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {% for lab in phase.labs.all %}
                             {% if lab.is_published %}
@@ -48,7 +54,7 @@
                                     </div>
 
                                     <div class="mt-4 flex items-center gap-2 text-xs text-[#5c5c5c]">
-                                        <span>{{ lab.resource_profile.cpu_count }} CPU</span>
+                                        <span>{{ lab.resource_profile.cpu_count|floatformat }} CPU</span>
                                         <span>&middot;</span>
                                         <span>{{ lab.resource_profile.memory_mb }} MB</span>
                                         <span>&middot;</span>
@@ -74,7 +80,7 @@
                             </div>
                         {% endfor %}
                     </div>
-                </section>
+                </div>
             {% empty %}
                 <div class="rounded-xl border border-[#e0e0e0] bg-white p-10 text-center shadow-sm">
                     <svg class="empty-state-svg mx-auto h-28 w-28 text-[#b0b0b0]" viewBox="0 0 80 80" fill="none">
@@ -93,4 +99,22 @@
         </section>
     </div>
 </div>
+
+<script>
+    const tabs = document.querySelectorAll('.phase-tab');
+    const contents = document.querySelectorAll('.phase-content');
+
+    function switchPhase(el) {
+        const id = el.dataset.phase;
+        tabs.forEach(t => {
+            t.classList.remove('text-black', 'border-[#0067c0]');
+            t.classList.add('text-[#5c5c5c]', 'border-transparent');
+        });
+        el.classList.remove('text-[#5c5c5c]', 'border-transparent');
+        el.classList.add('text-black', 'border-[#0067c0]');
+        contents.forEach(c => c.classList.toggle('hidden', c.dataset.phase !== id));
+    }
+
+    if (tabs.length) switchPhase(tabs[0]);
+</script>
 {% endblock %}
