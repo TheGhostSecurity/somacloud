@@ -42,6 +42,5 @@ urlpatterns = [
     path("sandbox/<int:session_id>/", views.student_sandbox_view, name="student_sandbox_view"),
     path("sandbox/<int:session_id>/stop/", views.stop_sandbox_session, name="stop_sandbox_session"),
     path("sandbox/<int:session_id>/status/", views.sandbox_session_status, name="sandbox_session_status"),
-    path("progress/", views.progress_overview, name="progress_overview"),
     path("profile/", views.student_profile, name="student_profile"),
 ]

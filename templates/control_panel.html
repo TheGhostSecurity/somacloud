@@ -89,15 +89,6 @@
                         <span class="block text-xs text-[#5c5c5c]">{{ lab_stats.total }} lab{{ lab_stats.total|pluralize }}, {{ resource_profile_count }} profiles</span>
                     </span>
                 </a>
-                <a class="flex items-center gap-4 rounded-xl border border-[#e0e0e0] bg-white px-5 py-4 shadow-sm hover:border-[#c8c8c8] hover:shadow-md" href="{% url 'progress_overview' %}">
-                    <span class="grid h-10 w-10 place-items-center rounded-lg bg-[#feebc8] text-[#c43e1c]">
-                        <i data-lucide="activity" class="h-5 w-5"></i>
-                    </span>
-                    <span>
-                        <span class="block font-semibold text-black">Learner Progress</span>
-                        <span class="block text-xs text-[#5c5c5c]">{{ stats.students }} student{{ stats.students|pluralize }} enrolled</span>
-                    </span>
-                </a>
             </div>
 
             {% if hack_phases_data %}
