@@ -411,13 +411,8 @@ def update_student_profile_image(request):
 
 @login_required
 def instructor_dashboard(request):
-    is_admin = request.user.is_staff or request.user.is_superuser
-    if is_admin:
-        labs = Lab.objects.all().select_related("hack_phase", "resource_profile", "instructor").order_by("-created_at")
-        total_enrollments = LabEnrollment.objects.filter(is_active=True).count()
-    else:
-        labs = Lab.objects.filter(instructor=request.user).select_related("hack_phase", "resource_profile").order_by("-created_at")
-        total_enrollments = LabEnrollment.objects.filter(lab__instructor=request.user, is_active=True).count()
+    labs = Lab.objects.all().select_related("hack_phase", "resource_profile", "instructor").order_by("-created_at")
+    total_enrollments = LabEnrollment.objects.filter(is_active=True).count()
     total_students = User.objects.exclude(is_staff=True).exclude(groups__name__iexact="Instructor").count()
 
     active_sessions_total = 0
@@ -544,7 +539,7 @@ def instructor_lab_create(request):
 
 @login_required
 def instructor_lab_edit(request, lab_id):
-    lab = get_object_or_404(Lab, pk=lab_id, instructor=request.user)
+    lab = get_object_or_404(Lab, pk=lab_id) if request.user.is_staff or request.user.is_superuser else get_object_or_404(Lab, pk=lab_id, instructor=request.user)
 
     if request.method == "POST":
         form = LabForm(request.POST, instance=lab)
@@ -571,10 +566,7 @@ def instructor_lab_edit(request, lab_id):
 @login_required
 @user_passes_test(_is_instructor)
 def instructor_live_monitor(request):
-    if request.user.is_staff or request.user.is_superuser:
-        sessions = SandboxSession.objects.filter(status=SandboxSession.RUNNING).select_related("user", "lab").order_by("-started_at")
-    else:
-        sessions = SandboxSession.objects.filter(lab__instructor=request.user, status=SandboxSession.RUNNING).select_related("user", "lab").order_by("-started_at")
+    sessions = SandboxSession.objects.filter(status=SandboxSession.RUNNING).select_related("user", "lab").order_by("-started_at")
 
     total_online = sessions.count()
     lab_breakdown = {}
@@ -742,7 +734,7 @@ def analytics_chart_sessions(request, user_id):
 @login_required
 @user_passes_test(_is_instructor)
 def instructor_lab_sessions(request, lab_id):
-    lab = get_object_or_404(Lab, pk=lab_id, instructor=request.user)
+    lab = get_object_or_404(Lab, pk=lab_id) if request.user.is_staff or request.user.is_superuser else get_object_or_404(Lab, pk=lab_id, instructor=request.user)
     sessions = SandboxSession.objects.filter(lab=lab).select_related("user").order_by("-started_at")
 
     return render(
@@ -762,7 +754,10 @@ def instructor_lab_sessions(request, lab_id):
 def instructor_lab_toggle(request, lab_id):
     if request.method != "POST":
         return redirect("instructor_dashboard")
-    lab = get_object_or_404(Lab, pk=lab_id, instructor=request.user)
+    if request.user.is_staff or request.user.is_superuser:
+        lab = get_object_or_404(Lab, pk=lab_id)
+    else:
+        lab = get_object_or_404(Lab, pk=lab_id, instructor=request.user)
     lab.is_published = not lab.is_published
     lab.save(update_fields=["is_published"])
     state = "published" if lab.is_published else "unpublished"
@@ -774,7 +769,10 @@ def instructor_lab_toggle(request, lab_id):
 def instructor_lab_delete(request, lab_id):
     if request.method != "POST":
         return redirect("instructor_dashboard")
-    lab = get_object_or_404(Lab, pk=lab_id, instructor=request.user)
+    if request.user.is_staff or request.user.is_superuser:
+        lab = get_object_or_404(Lab, pk=lab_id)
+    else:
+        lab = get_object_or_404(Lab, pk=lab_id, instructor=request.user)
     title = lab.title
     lab.delete()
     messages.success(request, f"Lab '{title}' was deleted.")
