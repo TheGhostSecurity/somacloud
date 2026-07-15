@@ -155,9 +155,7 @@ def signup(request):
 
 @login_required
 def dashboard(request):
-    if request.user.is_staff or request.user.is_superuser:
-        return redirect("control_panel")
-    if request.user.groups.filter(name__iexact="Instructor").exists():
+    if _is_instructor(request.user):
         return redirect("instructor_dashboard")
     return redirect("user_dashboard")
 
