@@ -12,6 +12,7 @@ from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.db.models import Count, Q, ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -44,7 +45,7 @@ from .models import (
     StudentProfile,
     Tool,
 )
-from .orchestrator import _docker_api, deploy_sandbox, get_sandbox_status, stop_sandbox
+from .orchestrator import _docker_api, deploy_sandbox, expire_stale_sessions, get_sandbox_status, stop_sandbox
 from .services import (
     enrolled_labs_for,
     lab_progress_for,
@@ -240,6 +241,7 @@ def delete_user(request, user_id):
 
 @login_required
 def user_dashboard(request):
+    expire_stale_sessions()
     profile, _ = StudentProfile.objects.get_or_create(user=request.user)
     profile_form = StudentProfileImageForm(instance=profile)
 
@@ -566,6 +568,7 @@ def instructor_lab_edit(request, lab_id):
 @login_required
 @user_passes_test(_is_instructor)
 def instructor_live_monitor(request):
+    expire_stale_sessions()
     sessions = SandboxSession.objects.filter(status=SandboxSession.RUNNING).select_related("user", "lab").order_by("-started_at")
 
     total_online = sessions.count()
@@ -901,18 +904,18 @@ def launch_sandbox(request, lab_id):
     lab = get_object_or_404(Lab.objects.select_related("resource_profile"), pk=lab_id)
     get_object_or_404(LabEnrollment, user=request.user, lab=lab, is_active=True)
 
-    active = SandboxSession.objects.filter(
-        user=request.user, lab=lab, status__in=[SandboxSession.PENDING, SandboxSession.RUNNING]
-    ).first()
-    if active:
-        messages.warning(request, "You already have an active sandbox session.")
-        return redirect("student_sandbox_view", session_id=active.id)
+    with transaction.atomic():
+        active = SandboxSession.objects.select_for_update().filter(
+            user=request.user, lab=lab, status__in=[SandboxSession.PENDING, SandboxSession.RUNNING]
+        ).first()
+        if active:
+            messages.warning(request, "You already have an active sandbox session.")
+            return redirect("student_sandbox_view", session_id=active.id)
 
-    session = SandboxSession.objects.create(
-        user=request.user,
-        lab=lab,
-        expires_at=timezone.now() + timezone.timedelta(minutes=lab.resource_profile.time_limit_minutes),
-    )
+        session = SandboxSession.objects.create(
+            user=request.user,
+            lab=lab,
+        )
 
     result = deploy_sandbox(session)
     if not result:
@@ -925,6 +928,7 @@ def launch_sandbox(request, lab_id):
 
 @login_required
 def student_sandbox_view(request, session_id):
+    expire_stale_sessions()
     session = get_object_or_404(SandboxSession, pk=session_id, user=request.user)
     status = get_sandbox_status(session)
     remaining = None
@@ -974,6 +978,7 @@ def stop_sandbox_session(request, session_id):
 
 @login_required
 def sandbox_session_status(request, session_id):
+    expire_stale_sessions()
     session = get_object_or_404(SandboxSession, pk=session_id, user=request.user)
     status = get_sandbox_status(session)
     remaining = None

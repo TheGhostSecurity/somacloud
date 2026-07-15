@@ -25,7 +25,7 @@
                     <i data-lucide="external-link" class="mr-1 inline h-3.5 w-3.5"></i>Pop out
                 </a>
             {% endif %}
-            <form action="{% url 'stop_sandbox_session' session.id %}" method="post">
+            <form id="stop-form" action="{% url 'stop_sandbox_session' session.id %}" method="post" class="{% if status != "running" %}hidden{% endif %}">
                 {% csrf_token %}
                 <button class="rounded bg-[#dc3d4f] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[#bc2f40]" type="submit"><i data-lucide="square" class="mr-1 inline h-3.5 w-3.5"></i>Stop</button>
             </form>
@@ -85,28 +85,114 @@
                 <div class="flex items-center gap-2 text-sm font-semibold text-white"><span class="h-2 w-2 rounded-full bg-[#9be62f]"></span>Browser Terminal</div>
                 <span class="font-mono text-xs text-[#71829d]">ttyd session</span>
             </div>
-            {% if status == "running" and session.terminal_url %}
+            <div id="terminal-section" class="flex min-h-0 flex-1 {% if status != "running" or not session.terminal_url %}hidden{% endif %}">
                 <iframe title="{{ session.lab.title }} terminal" src="{{ session.terminal_url }}" class="min-h-0 w-full flex-1 border-0 bg-black"></iframe>
-            {% else %}
-                <div class="flex min-h-0 flex-1 items-center justify-center p-6 text-center">
-                    <div class="max-w-md">
-                        {% if status == "pending" %}
-                            <i data-lucide="loader-circle" class="mx-auto h-10 w-10 animate-spin text-[#7db7ff]"></i><h2 class="mt-4 text-lg font-semibold text-white">Launching your workspace…</h2><p class="mt-2 text-sm text-[#9baac0]">Your containers are being provisioned. Refresh in a moment.</p><button onclick="location.reload()" class="mt-4 rounded bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]">Refresh</button>
-                        {% elif status == "error" %}
-                            <i data-lucide="alert-circle" class="mx-auto h-10 w-10 text-[#f87171]"></i><h2 class="mt-4 text-lg font-semibold text-white">Sandbox error</h2><p class="mt-2 text-sm text-[#9baac0]">There was a problem launching the terminal.</p>
-                        {% else %}
-                            <i data-lucide="square" class="mx-auto h-10 w-10 text-[#9baac0]"></i><h2 class="mt-4 text-lg font-semibold text-white">Sandbox {{ status|title }}</h2><p class="mt-2 text-sm text-[#9baac0]">This workspace is no longer active.</p>
-                        {% endif %}
-                    </div>
+            </div>
+            <div id="status-message" class="flex min-h-0 flex-1 items-center justify-center p-6 text-center {% if status == "running" and session.terminal_url %}hidden{% endif %}">
+                <div class="max-w-md">
+                    {% if status == "pending" %}
+                        <i data-lucide="loader-circle" id="status-icon" class="mx-auto h-10 w-10 animate-spin text-[#7db7ff]"></i><h2 id="status-title" class="mt-4 text-lg font-semibold text-white">Launching your workspace…</h2><p id="status-text" class="mt-2 text-sm text-[#9baac0]">Your containers are being provisioned. Refresh in a moment.</p>
+                    {% elif status == "error" %}
+                        <i data-lucide="alert-circle" id="status-icon" class="mx-auto h-10 w-10 text-[#f87171]"></i><h2 id="status-title" class="mt-4 text-lg font-semibold text-white">Sandbox error</h2><p id="status-text" class="mt-2 text-sm text-[#9baac0]">There was a problem launching the terminal.</p>
+                    {% else %}
+                        <i data-lucide="square" id="status-icon" class="mx-auto h-10 w-10 text-[#9baac0]"></i><h2 id="status-title" class="mt-4 text-lg font-semibold text-white">Sandbox {{ status|title }}</h2><p id="status-text" class="mt-2 text-sm text-[#9baac0]">This workspace is no longer active.</p>
+                    {% endif %}
+                    <form id="relaunch-btn" action="{% url 'launch_sandbox' session.lab.id %}" method="post" class="hidden">
+                        {% csrf_token %}
+                        <button type="submit" class="mt-4 rounded bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]">Launch New Session</button>
+                    </form>
                 </div>
-            {% endif %}
+            </div>
         </section>
     </main>
 </div>
 
-{% if remaining is not None and status == "running" %}
 <script>
-    (function() { let seconds = {{ remaining }}; const timerEl = document.getElementById('timer'); const badgeEl = document.getElementById('status-badge'); setInterval(function() { seconds--; if (timerEl) timerEl.textContent = seconds + 's'; if (seconds <= 60 && badgeEl) badgeEl.className = 'hidden shrink-0 rounded-full bg-[#d99322] px-2 py-0.5 text-xs font-semibold text-white sm:inline-block'; if (seconds <= 0) location.reload(); }, 1000); })();
+(function() {
+    const STATUS_URL = "{% url 'sandbox_session_status' session.id %}";
+    const TIMER_EL = document.getElementById('timer');
+    const BADGE_EL = document.getElementById('status-badge');
+    const TERMINAL_SECTION = document.getElementById('terminal-section');
+    const STATUS_MSG = document.getElementById('status-message');
+    const STATUS_ICON = document.getElementById('status-icon');
+    const STATUS_TITLE = document.getElementById('status-title');
+    const STATUS_TEXT = document.getElementById('status-text');
+    const RELAUNCH_BTN = document.getElementById('relaunch-btn');
+    const STOP_FORM = document.getElementById('stop-form');
+
+    function updateUI(data) {
+        if (data.status === 'running') {
+            if (TIMER_EL) {
+                TIMER_EL.textContent = data.remaining + 's';
+                TIMER_EL.classList.remove('hidden');
+            }
+            if (BADGE_EL) {
+                BADGE_EL.textContent = 'Running';
+                BADGE_EL.className = 'shrink-0 rounded-full bg-[#138a54] px-2 py-0.5 text-xs font-semibold text-white sm:inline-block';
+                if (data.remaining <= 60) {
+                    BADGE_EL.className = 'shrink-0 rounded-full bg-[#d99322] px-2 py-0.5 text-xs font-semibold text-white sm:inline-block';
+                }
+            }
+            if (TERMINAL_SECTION && data.terminal_url) {
+                if (!TERMINAL_SECTION.querySelector('iframe')) {
+                    TERMINAL_SECTION.innerHTML = '<iframe title="{{ session.lab.title|escapejs }} terminal" src="' + data.terminal_url + '" class="min-h-0 w-full flex-1 border-0 bg-black"></iframe>';
+                }
+                TERMINAL_SECTION.classList.remove('hidden');
+            }
+            if (STATUS_MSG) STATUS_MSG.classList.add('hidden');
+            // re-hide relaunch on reconnection
+            if (RELAUNCH_BTN) RELAUNCH_BTN.classList.add('hidden');
+            if (STOP_FORM) STOP_FORM.classList.remove('hidden');
+        } else {
+            if (TIMER_EL) TIMER_EL.classList.add('hidden');
+            if (BADGE_EL) {
+                BADGE_EL.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+                if (data.status === 'expired') BADGE_EL.className = 'shrink-0 rounded-full bg-[#d99322] px-2 py-0.5 text-xs font-semibold text-white sm:inline-block';
+                else if (data.status === 'error') BADGE_EL.className = 'shrink-0 rounded-full bg-[#dc3d4f] px-2 py-0.5 text-xs font-semibold text-white sm:inline-block';
+                else BADGE_EL.className = 'shrink-0 rounded-full bg-[#5c5c5c] px-2 py-0.5 text-xs font-semibold text-white sm:inline-block';
+            }
+            if (TERMINAL_SECTION) TERMINAL_SECTION.classList.add('hidden');
+            if (STATUS_MSG) {
+                STATUS_MSG.classList.remove('hidden');
+                if (data.status === 'pending') {
+                    if (STATUS_ICON) STATUS_ICON.outerHTML = '<i data-lucide="loader-circle" id="status-icon" class="mx-auto h-10 w-10 animate-spin text-[#7db7ff]"></i>';
+                    if (STATUS_TITLE) STATUS_TITLE.textContent = 'Launching your workspace…';
+                    if (STATUS_TEXT) STATUS_TEXT.textContent = 'Your containers are being provisioned. Refresh in a moment.';
+                } else if (data.status === 'expired') {
+                    if (STATUS_ICON) STATUS_ICON.outerHTML = '<i data-lucide="clock" id="status-icon" class="mx-auto h-10 w-10 text-[#d99322]"></i>';
+                    if (STATUS_TITLE) STATUS_TITLE.textContent = 'Session Expired';
+                    if (STATUS_TEXT) STATUS_TEXT.textContent = 'Your sandbox time has run out. You can launch a new session.';
+                } else if (data.status === 'error') {
+                    if (STATUS_ICON) STATUS_ICON.outerHTML = '<i data-lucide="alert-circle" id="status-icon" class="mx-auto h-10 w-10 text-[#f87171]"></i>';
+                    if (STATUS_TITLE) STATUS_TITLE.textContent = 'Sandbox Error';
+                    if (STATUS_TEXT) STATUS_TEXT.textContent = 'There was a problem with the terminal.';
+                } else {
+                    if (STATUS_ICON) STATUS_ICON.outerHTML = '<i data-lucide="square" id="status-icon" class="mx-auto h-10 w-10 text-[#9baac0]"></i>';
+                    if (STATUS_TITLE) STATUS_TITLE.textContent = 'Sandbox ' + data.status.charAt(0).toUpperCase() + data.status.slice(1);
+                    if (STATUS_TEXT) STATUS_TEXT.textContent = 'This workspace is no longer active.';
+                }
+                if (window.lucide) lucide.createIcons();
+            }
+            // show relaunch when stopped/expired/error (not pending)
+            if (RELAUNCH_BTN && data.status !== 'pending' && data.status !== 'running') {
+                RELAUNCH_BTN.classList.remove('hidden');
+            }
+            if (STOP_FORM) STOP_FORM.classList.add('hidden');
+        }
+    }
+
+    function poll() {
+        fetch(STATUS_URL)
+            .then(function(r) { return r.json(); })
+            .then(function(data) { updateUI(data); })
+            .catch(function() {});
+    }
+
+    // initial poll immediately, then every 10s
+    if (STATUS_URL) {
+        poll();
+        setInterval(poll, 10000);
+    }
+})();
 </script>
-{% endif %}
 {% endblock %}

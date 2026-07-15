@@ -216,7 +216,7 @@ def deploy_sandbox(session):
     return session
 
 
-def stop_sandbox(session):
+def stop_sandbox(session, status=SandboxSession.STOPPED):
     container_ids = [session.container_id, *session.service_container_ids]
     # Older sessions created by the legacy provisioner only have service_container_id.
     if session.service_container_id and session.service_container_id not in container_ids:
@@ -225,7 +225,7 @@ def stop_sandbox(session):
         _remove_container(container_id)
     _remove_network(session.network_name)
     _release_ports(session)
-    session.status = SandboxSession.STOPPED
+    session.status = status
     session.stopped_at = timezone.now()
     session.save(update_fields=["status", "stopped_at"])
 
@@ -244,7 +244,8 @@ def get_sandbox_status(session):
 
 
 def expire_stale_sessions():
-    for session in SandboxSession.objects.filter(status=SandboxSession.RUNNING, expires_at__lte=timezone.now()):
-        stop_sandbox(session)
-        session.status = SandboxSession.EXPIRED
-        session.save(update_fields=["status"])
+    expired = SandboxSession.objects.filter(status=SandboxSession.RUNNING, expires_at__lte=timezone.now())
+    count = expired.count()
+    for session in expired:
+        stop_sandbox(session, status=SandboxSession.EXPIRED)
+    return count
