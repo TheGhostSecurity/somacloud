@@ -915,6 +915,7 @@ def launch_sandbox(request, lab_id):
         session = SandboxSession.objects.create(
             user=request.user,
             lab=lab,
+            expires_at=timezone.now() + timedelta(minutes=lab.resource_profile.time_limit_minutes),
         )
 
     result = deploy_sandbox(session)

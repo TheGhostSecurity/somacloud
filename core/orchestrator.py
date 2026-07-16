@@ -1,6 +1,5 @@
 import logging
 import uuid
-from datetime import timedelta
 from urllib.parse import quote
 
 import requests
@@ -211,7 +210,6 @@ def deploy_sandbox(session):
     session.server_url = f"{settings.DOCKER_PUBLIC_SCHEME}://{settings.DOCKER_SERVER_PUBLIC_IP}"
     session.terminal_url = f"{session.server_url}:{session.terminal_port}/"
     session.status = SandboxSession.RUNNING
-    session.expires_at = timezone.now() + timedelta(minutes=profile.time_limit_minutes)
     session.save()
     return session
 
