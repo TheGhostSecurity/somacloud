@@ -96,17 +96,17 @@
             </div>
 
             <section class="overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
-                <div class="flex flex-col gap-3 border-b border-[#ededed] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex flex-col gap-3 border-b border-[#ededed] px-5 py-4">
                     <div>
                         <h2 class="font-semibold text-black">My Labs</h2>
                         <p class="text-sm text-[#5c5c5c]">Manage your cyber security labs.</p>
                     </div>
-                    <select id="phaseFilter" class="rounded-md border border-[#e0e0e0] bg-white px-3 py-1.5 text-xs font-medium text-[#424242]">
-                        <option value="">All phases</option>
+                    <div class="flex gap-1 overflow-x-auto" id="phaseTabs">
+                        <button class="phase-tab shrink-0 rounded-md px-4 py-2 text-sm font-semibold transition-colors" data-phase="" style="background-color:#0067c0;color:#fff">All</button>
                         {% for phase in hack_phases %}
-                            <option value="{{ phase.id }}">{{ phase.name }}</option>
+                            <button class="phase-tab shrink-0 rounded-md px-4 py-2 text-sm font-semibold text-[#424242] transition-colors hover:bg-[#eaf4ff]" data-phase="{{ phase.id }}">{{ phase.name }}</button>
                         {% endfor %}
-                    </select>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[760px] text-left text-sm">
@@ -174,16 +174,25 @@
             </section>
 
             <script>
-                const phaseFilter = document.getElementById('phaseFilter');
-                if (phaseFilter) {
+                (function() {
+                    const tabs = document.querySelectorAll('.phase-tab');
                     const rows = document.querySelectorAll('.lab-row');
-                    phaseFilter.addEventListener('change', () => {
-                        const phase = phaseFilter.value;
-                        rows.forEach(row => {
-                            row.style.display = (!phase || row.dataset.phase === phase) ? '' : 'none';
+                    tabs.forEach(function(tab) {
+                        tab.addEventListener('click', function() {
+                            tabs.forEach(function(t) {
+                                t.style.backgroundColor = '';
+                                t.style.color = '#424242';
+                                t.classList.remove('bg-[#0067c0]', 'text-white');
+                            });
+                            this.style.backgroundColor = '#0067c0';
+                            this.style.color = '#fff';
+                            const phase = this.dataset.phase;
+                            rows.forEach(function(row) {
+                                row.style.display = (!phase || row.dataset.phase === phase) ? '' : 'none';
+                            });
                         });
                     });
-                }
+                })();
             </script>
 
             {% if hack_phases %}
