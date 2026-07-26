@@ -309,7 +309,7 @@ def _fail(session, container_ids, network, node=None):
     session.status = SandboxSession.ERROR
     session.save(update_fields=["status"])
     if node:
-        DockerNode.objects.filter(pk=node.pk).update(
+        DockerNode.objects.filter(pk=node.pk, current_sessions__gt=0).update(
             current_sessions=db_models.F("current_sessions") - 1
         )
     return None
@@ -414,7 +414,7 @@ def stop_sandbox(session, status=SandboxSession.STOPPED):
     session.save(update_fields=["status", "stopped_at"])
     # Decrement node session count
     if node:
-        DockerNode.objects.filter(pk=node.pk).update(current_sessions=db_models.F("current_sessions") - 1)
+        DockerNode.objects.filter(pk=node.pk, current_sessions__gt=0).update(current_sessions=db_models.F("current_sessions") - 1)
 
 
 def get_sandbox_status(session):
@@ -428,7 +428,7 @@ def get_sandbox_status(session):
     session.save(update_fields=["status", "stopped_at"])
     _release_ports(session)
     if session.node:
-        DockerNode.objects.filter(pk=session.node.pk).update(
+        DockerNode.objects.filter(pk=session.node.pk, current_sessions__gt=0).update(
             current_sessions=db_models.F("current_sessions") - 1
         )
     return SandboxSession.STOPPED
