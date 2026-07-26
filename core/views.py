@@ -1115,7 +1115,9 @@ def node_add(request):
         if not node.ssh_host:
             node.ssh_host = node.public_ip
         if not node.docker_host:
-            node.docker_host = f"https://{node.public_ip}:2376"
+            node.docker_host = f"http://{node.public_ip}:2376"
+        elif not node.docker_host.startswith(("http://", "https://")):
+            node.docker_host = f"http://{node.docker_host}"
         node.save()
         messages.success(request, f"Node '{node.name}' registered. Use 'Setup Node' to configure it remotely.")
         return redirect("node_list")
