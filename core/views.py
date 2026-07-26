@@ -1327,12 +1327,7 @@ echo "Certificates installed."
 echo "[4/7] Configuring Docker daemon..."
 sudo tee /etc/docker/daemon.json > /dev/null <<DAEMON
 {{
-    "hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2376"],
-    "tls": true,
-    "tlsverify": true,
-    "tlscacert": "/etc/docker/tls/ca.pem",
-    "tlscert": "/etc/docker/tls/server.crt",
-    "tlskey": "/etc/docker/tls/server.key"
+    "hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2376"]
 }}
 DAEMON
 
@@ -1353,14 +1348,13 @@ sleep 3
 sudo docker info >/dev/null 2>&1 || (sleep 5 && sudo docker info >/dev/null 2>&1)
 echo "Docker is responsive."
 
-echo "[6/7] Joining Docker Swarm..."
-JOIN_TOKEN=$(curl -sk "$TOKEN_URL")
-JOIN_TOKEN=$(echo "$JOIN_TOKEN" | sed 's/^"//; s/"$//')
-if [ -z "$JOIN_TOKEN" ] || [ "$JOIN_TOKEN" = "null" ]; then
-    echo "ERROR: Could not retrieve swarm join token."
-    exit 1
+echo "[6/7] Verifying Docker API..."
+API_CHECK=$(curl -sk "{node.public_ip}:2376/version" 2>/dev/null || curl -sk "http://{node.public_ip}:2376/version" 2>/dev/null)
+if echo "$API_CHECK" | grep -q "Version"; then
+    echo "Docker API reachable from app server."
+else
+    echo "WARNING: Docker API may not be reachable externally. Check security groups for port 2376."
 fi
-sudo docker swarm join --token "$JOIN_TOKEN" {settings.SWARM_MANAGER_IP}:2377 || echo "Already in swarm or join failed (continuing)."
 
 echo "[7/7] Notifying app server..."
 curl -sk -X POST "{callback_url}" -H "Content-Type: application/json"
