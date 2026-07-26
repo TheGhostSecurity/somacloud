@@ -1373,13 +1373,13 @@ def node_setup(request, node_id):
         ssh_passphrase = request.POST.get("ssh_passphrase", "") or None
 
         try:
-            pkey = paramiko.Ed25519Key.from_private_key(io.BytesIO(key_data), password=ssh_passphrase)
+            pkey = paramiko.Ed25519Key.from_private_key(io.StringIO(key_data.decode("utf-8")), password=ssh_passphrase)
         except Exception:
             try:
-                pkey = paramiko.RSAKey.from_private_key(io.BytesIO(key_data), password=ssh_passphrase)
+                pkey = paramiko.RSAKey.from_private_key(io.StringIO(key_data.decode("utf-8")), password=ssh_passphrase)
             except Exception:
                 try:
-                    pkey = paramiko.ECDSAKey.from_private_key(io.BytesIO(key_data), password=ssh_passphrase)
+                    pkey = paramiko.ECDSAKey.from_private_key(io.StringIO(key_data.decode("utf-8")), password=ssh_passphrase)
                 except Exception:
                     messages.error(request, "Could not parse SSH key. Ensure it's a valid Ed25519, RSA, or ECDSA key.")
                     return redirect("node_list")
