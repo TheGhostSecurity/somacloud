@@ -1332,7 +1332,7 @@ docker info >/dev/null 2>&1 || (sleep 5 && docker info >/dev/null 2>&1)
 echo "Docker is responsive."
 
 echo "[6/7] Joining Docker Swarm..."
-JOIN_TOKEN=$(curl -sk "{token_url}")
+JOIN_TOKEN=$(curl -sk "$TOKEN_URL")
 JOIN_TOKEN=$(echo "$JOIN_TOKEN" | sed 's/^"//; s/"$//')
 if [ -z "$JOIN_TOKEN" ] || [ "$JOIN_TOKEN" = "null" ]; then
     echo "ERROR: Could not retrieve swarm join token."
