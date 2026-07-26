@@ -48,6 +48,20 @@
         animation: soma-panel-prev 380ms ease both;
     }
 
+    .soma-product-stage {
+        perspective: 1800px;
+    }
+
+    .soma-product-main {
+        transform: rotateY(-8deg) rotateX(2deg) rotateZ(1.2deg);
+        transform-origin: center right;
+    }
+
+    .soma-product-secondary {
+        transform: rotateY(-8deg) rotateX(2deg) rotateZ(-3deg);
+        transform-origin: center left;
+    }
+
     @media (prefers-reduced-motion: reduce) {
         html { scroll-behavior: auto; }
         .soma-float,
@@ -55,14 +69,19 @@
         .soma-tab-panel.slide-prev {
             animation: none;
         }
+
+        .soma-product-main,
+        .soma-product-secondary {
+            transform: none;
+        }
     }
 </style>
 
 <header class="sticky top-0 z-40 border-b border-[#d7e5f4] bg-white/90 backdrop-blur-xl">
     <nav class="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 lg:px-8" aria-label="Primary navigation">
         <a href="{% url 'home' %}" class="flex items-center gap-3" aria-label="SomaCloud home">
-            <img class="h-10 w-auto object-contain" src="{% static 'images/somacloud-logo-mark.png' %}" alt="" aria-hidden="true">
-            <span class="text-xl font-semibold text-[#061526]">SomaCloud</span>
+            <span class="grid h-9 w-9 place-items-center rounded-md text-[#424242]" aria-hidden="true"><i data-lucide="cloud" class="h-5 w-5"></i></span>
+            <span class="text-sm font-semibold text-black">SomaCloud</span>
         </a>
 
         <div class="flex items-center gap-3">
@@ -121,17 +140,15 @@
             </div>
         </div>
 
-        <figure class="relative lg:scale-[1.06] lg:origin-center">
-            <div class="overflow-hidden rounded-[2rem] border border-white/80 bg-white/85 p-2 shadow-2xl shadow-[#0078d4]/25 backdrop-blur-xl">
-                <img
-                    class="w-full rounded-[1.5rem] border border-[#c9e5f8] object-cover"
-                    src="{% static 'images/student-lab-workspace.png' %}"
-                    alt="SomaCloud student lab workspace showing guided instructions alongside a browser terminal"
-                    width="1361"
-                    height="535"
-                >
+        <figure class="soma-product-stage relative mx-auto h-[285px] w-full sm:h-[370px] lg:h-[450px]">
+            <div class="soma-product-main absolute right-0 top-5 w-[91%] overflow-hidden rounded-[1.6rem] border border-white/90 bg-white p-2 shadow-2xl shadow-[#0078d4]/30">
+                <img class="block w-full rounded-[1.15rem] border border-[#c9e5f8]" src="{% static 'images/student-lab-workspace.png' %}" alt="SomaCloud student lab workspace showing guided instructions alongside a browser terminal" width="1361" height="535">
             </div>
-            <figcaption class="sr-only">Students follow guided exercises and work directly in a live browser terminal.</figcaption>
+            <div class="soma-product-secondary absolute bottom-2 left-0 w-[53%] overflow-hidden rounded-2xl border border-white bg-white p-1.5 shadow-2xl shadow-[#061526]/25">
+                <img class="block w-full rounded-xl border border-[#c9e5f8]" src="{% static 'images/student-dashboard.png' %}" alt="SomaCloud student dashboard showing learning progress and enrolled labs" width="1361" height="535">
+            </div>
+            <div class="absolute right-[4%] top-0 hidden rounded-full border border-white/80 bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#0078d4] shadow-lg sm:block">Live learning workspace</div>
+            <figcaption class="sr-only">Students can manage their progress and work directly in a live browser terminal.</figcaption>
         </figure>
     </div>
 </section>
@@ -141,7 +158,6 @@
         <button class="soma-tab-btn shrink-0 rounded-full bg-[#061526] px-5 py-2.5 text-sm font-semibold text-white" type="button" role="tab" aria-selected="true" aria-controls="panel-overview" id="tab-overview" data-tab="overview">Overview</button>
         <button class="soma-tab-btn shrink-0 rounded-full bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold text-[#061526] transition hover:bg-[#dbeeff]" type="button" role="tab" aria-selected="false" aria-controls="panel-features" id="tab-features" data-tab="features">Features</button>
         <button class="soma-tab-btn shrink-0 rounded-full bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold text-[#061526] transition hover:bg-[#dbeeff]" type="button" role="tab" aria-selected="false" aria-controls="panel-workflow" id="tab-workflow" data-tab="workflow">How It Works</button>
-        <button class="soma-tab-btn shrink-0 rounded-full bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold text-[#061526] transition hover:bg-[#dbeeff]" type="button" role="tab" aria-selected="false" aria-controls="panel-paths" id="tab-paths" data-tab="paths">Learning Paths</button>
         <button class="soma-tab-btn shrink-0 rounded-full bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold text-[#061526] transition hover:bg-[#dbeeff]" type="button" role="tab" aria-selected="false" aria-controls="panel-labs" id="tab-labs" data-tab="labs">Cyber Labs</button>
         <button class="soma-tab-btn shrink-0 rounded-full bg-[#e8e8e8] px-5 py-2.5 text-sm font-semibold text-[#061526] transition hover:bg-[#dbeeff]" type="button" role="tab" aria-selected="false" aria-controls="panel-institutions" id="tab-institutions" data-tab="institutions">Institutions</button>
         <button class="soma-tab-next ml-auto grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-[#061526] text-[#061526] transition hover:bg-[#eaf4ff]" type="button" aria-label="Next section">
@@ -206,19 +222,6 @@
                         <div class="relative rounded-3xl border border-[#d7e5f4] bg-white p-6 text-center shadow-sm"><span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#061526] text-white"><i data-lucide="network" class="h-7 w-7"></i></span><h3 class="mt-6 font-semibold">Join Cyber Labs</h3></div>
                         <div class="relative rounded-3xl border border-[#d7e5f4] bg-white p-6 text-center shadow-sm"><span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#061526] text-white"><i data-lucide="scan-search" class="h-7 w-7"></i></span><h3 class="mt-6 font-semibold">Solve Practical Challenges</h3></div>
                         <div class="relative rounded-3xl border border-[#d7e5f4] bg-white p-6 text-center shadow-sm"><span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#061526] text-white"><i data-lucide="badge-check" class="h-7 w-7"></i></span><h3 class="mt-6 font-semibold">Build Cybersecurity Skills</h3></div>
-                    </div>
-                </div>
-            </article>
-
-            <article class="soma-tab-panel" id="panel-paths" role="tabpanel" aria-labelledby="tab-paths" data-panel="paths" hidden>
-                <div>
-                    <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#0067c0]">Cyber Learning Paths</p>
-                    <h2 class="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-[#061526] md:text-5xl">Structured paths for real security roles.</h2>
-                    <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div class="rounded-3xl bg-[#061526] p-6 text-white"><i data-lucide="route" class="h-8 w-8 text-[#37a5ff]"></i><h3 class="mt-6 text-xl font-semibold">Beginner</h3><p class="mt-4 text-sm leading-7 text-[#d7e9f7]">Networking Fundamentals<br>Linux Basics<br>Security Principles</p></div>
-                        <div class="rounded-3xl bg-[#061526] p-6 text-white"><i data-lucide="bug" class="h-8 w-8 text-[#37a5ff]"></i><h3 class="mt-6 text-xl font-semibold">Ethical Hacker</h3><p class="mt-4 text-sm leading-7 text-[#d7e9f7]">Reconnaissance<br>Web Security<br>Exploitation</p></div>
-                        <div class="rounded-3xl bg-[#061526] p-6 text-white"><i data-lucide="fingerprint" class="h-8 w-8 text-[#37a5ff]"></i><h3 class="mt-6 text-xl font-semibold">Digital Forensics</h3><p class="mt-4 text-sm leading-7 text-[#d7e9f7]">Evidence Collection<br>File Analysis<br>Investigation</p></div>
-                        <div class="rounded-3xl bg-[#061526] p-6 text-white"><i data-lucide="radar" class="h-8 w-8 text-[#37a5ff]"></i><h3 class="mt-6 text-xl font-semibold">SOC Analyst</h3><p class="mt-4 text-sm leading-7 text-[#d7e9f7]">Threat Detection<br>Log Analysis<br>Incident Response</p></div>
                     </div>
                 </div>
             </article>
