@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block body_class %}bg-[#f7f7f7] text-[#1f1f1f] antialiased{% endblock %}
+{% block header %}{% endblock %}
+{% block main_class %}min-h-screen bg-[#f7f7f7]{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen flex-col">
+    {% include "partials/dashboard_header.html" %}
+    <div class="flex min-h-0 flex-1">
+        {% include "partials/dashboard_sidebar.html" %}
+        <section class="min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
+            <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-[#0067c0]">Infrastructure</p>
+                    <h1 class="mt-1 text-2xl font-semibold text-black">Docker Nodes</h1>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a class="inline-flex items-center gap-2 rounded-md border border-[#c8c8c8] bg-white px-4 py-2 text-sm font-semibold text-[#424242] hover:bg-[#f7f7f7]" href="{% url 'node_health_all' %}">
+                        <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+                        Health Check All
+                    </a>
+                    <a class="inline-flex items-center gap-2 rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0055a3]" href="{% url 'node_list' %}?add=1">
+                        <i data-lucide="plus" class="h-4 w-4"></i>
+                        Add Node
+                    </a>
+                </div>
+            </div>
+
+            {% if messages %}
+                <div class="mb-6 space-y-2">
+                    {% for msg in messages %}
+                        <div class="rounded-lg border px-4 py-3 text-sm font-semibold
+                            {% if msg.tags == 'success' %}border-[#a7f3d0] bg-[#ecfdf3] text-[#107c41]
+                            {% elif msg.tags == 'error' %}border-[#fecaca] bg-[#fef2f2] text-[#dc3d4f]
+                            {% else %}border-[#c8c8c8] bg-[#f5f5f5] text-[#424242]{% endif %}">
+                            {{ msg }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if show_add_form or request.GET.add == "1" %}
+                <section class="mb-7 rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm">
+                    <div class="mb-4 flex items-center justify-between">
+                        <h2 class="font-semibold text-black">Register New Node</h2>
+                        <a href="{% url 'node_list' %}" class="text-sm text-[#8c8c8c] hover:text-[#424242]">Cancel</a>
+                    </div>
+                    {% if add_form.non_field_errors %}
+                        <div class="mb-4 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm text-[#dc3d4f]">
+                            {% for error in add_form.non_field_errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+                    <form action="{% url 'node_add' %}" method="post" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {% csrf_token %}
+                        <div>
+                            <label class="mb-1 block text-xs font-semibold text-[#5c5c5c]">Node Name *</label>
+                            {{ add_form.name }}
+                            {% if add_form.name.errors %}<p class="mt-1 text-xs text-[#dc3d4f]">{{ add_form.name.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-semibold text-[#5c5c5c]">Public IP *</label>
+                            {{ add_form.public_ip }}
+                            {% if add_form.public_ip.errors %}<p class="mt-1 text-xs text-[#dc3d4f]">{{ add_form.public_ip.errors.0 }}</p>{% endif %}
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-semibold text-[#5c5c5c]">Docker API URL *</label>
+                            {{ add_form.docker_host }}
+                            {% if add_form.docker_host.errors %}<p class="mt-1 text-xs text-[#dc3d4f]">{{ add_form.docker_host.errors.0 }}</p>{% endif %}
+                            <p class="mt-1 text-xs text-[#8c8c8c]">Defaults to https://&lt;public_ip&gt;:2376</p>
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-semibold text-[#5c5c5c]">SSH Key *</label>
+                            {{ add_form.ssh_key }}
+                            {% if add_form.ssh_key.errors %}<p class="mt-1 text-xs text-[#dc3d4f]">{{ add_form.ssh_key.errors.0 }}</p>{% endif %}
+                            <p class="mt-1 text-xs text-[#8c8c8c]">Pre-registered key for automated setup</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-20">
+                                <label class="mb-1 block text-xs font-semibold text-[#5c5c5c]">SSH Port</label>
+                                {{ add_form.ssh_port }}
+                            </div>
+                            <div class="flex-1">
+                                <label class="mb-1 block text-xs font-semibold text-[#5c5c5c]">SSH User</label>
+                                {{ add_form.ssh_user }}
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-20">
+                                <label class="mb-1 block text-xs font-semibold text-[#5c5c5c]">Port Start</label>
+                                {{ add_form.port_start }}
+                            </div>
+                            <div class="w-20">
+                                <label class="mb-1 block text-xs font-semibold text-[#5c5c5c]">Port End</label>
+                                {{ add_form.port_end }}
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-20">
+                                <label class="mb-1 block text-xs font-semibold text-[#5c5c5c]">CPU</label>
+                                {{ add_form.total_cpu }}
+                            </div>
+                            <div class="w-24">
+                                <label class="mb-1 block text-xs font-semibold text-[#5c5c5c]">Memory (MB)</label>
+                                {{ add_form.total_memory_mb }}
+                            </div>
+                        </div>
+                        <div class="sm:col-span-2 lg:col-span-3 flex justify-end">
+                            <button type="submit" class="inline-flex items-center gap-2 rounded-md bg-[#0067c0] px-5 py-2 text-sm font-semibold text-white hover:bg-[#0055a3]">
+                                <i data-lucide="plus" class="h-4 w-4"></i>
+                                Register Node
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            {% endif %}
+
+            {% if nodes %}
+                <div class="mb-7 grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <p class="text-xs font-semibold text-[#5c5c5c]">Total Nodes</p>
+                        <p class="mt-3 text-3xl font-semibold text-black">{{ nodes|length }}</p>
+                    </div>
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <p class="text-xs font-semibold text-[#5c5c5c]">Active</p>
+                        <p class="mt-3 text-3xl font-semibold text-[#107c41]">{{ active_count }}</p>
+                    </div>
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <p class="text-xs font-semibold text-[#5c5c5c]">Total Sessions</p>
+                        <p class="mt-3 text-3xl font-semibold text-black">{{ total_sessions }}</p>
+                    </div>
+                </div>
+
+                <section class="overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[900px] text-left text-sm">
+                            <thead class="border-b border-[#ededed] text-[#424242]">
+                                <tr>
+                                    <th class="px-6 py-4 font-semibold">Node</th>
+                                    <th class="px-6 py-4 font-semibold">Public IP</th>
+                                    <th class="px-6 py-4 font-semibold">Docker API</th>
+                                    <th class="px-6 py-4 font-semibold">Port Range</th>
+                                    <th class="px-6 py-4 font-semibold">Resources</th>
+                                    <th class="px-6 py-4 font-semibold">Sessions</th>
+                                    <th class="px-6 py-4 font-semibold">Status</th>
+                                    <th class="px-6 py-4 font-semibold">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-[#ededed]">
+                                {% for node in nodes %}
+                                    <tr class="hover:bg-[#fafafa]">
+                                        <td class="px-6 py-4">
+                                            <p class="font-semibold text-black">{{ node.name }}</p>
+                                            {% if node.docker_node_id %}
+                                                <p class="mt-1 text-xs text-[#8c8c8c]">Swarm ID: {{ node.docker_node_id|truncatechars:12 }}</p>
+                                            {% endif %}
+                                            <p class="mt-1 text-xs text-[#8c8c8c]">SSH: {{ node.ssh_user }}@{{ node.ssh_host }}:{{ node.ssh_port }}</p>
+                                        </td>
+                                        <td class="px-6 py-4 font-mono text-sm text-[#424242]">{{ node.public_ip }}</td>
+                                        <td class="px-6 py-4 font-mono text-xs text-[#5c5c5c]">{{ node.docker_host|truncatechars:40 }}</td>
+                                        <td class="px-6 py-4 text-[#424242]">{{ node.port_start }}–{{ node.port_end }}</td>
+                                        <td class="px-6 py-4 text-[#424242]">
+                                            <span class="text-sm">{{ node.total_cpu }} CPU</span>
+                                            <span class="text-[#8c8c8c]"> / </span>
+                                            <span class="text-sm">{{ node.total_memory_mb }} MB</span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="font-semibold text-black">{{ node.current_sessions }}</span>
+                                            <span class="text-[#8c8c8c]"> active</span>
+                                            <div class="mt-1 h-1.5 w-16 overflow-hidden rounded-full bg-[#e5e7eb]">
+                                                <div class="h-full rounded-full {% if node.capacity_percent > 80 %}bg-[#dc3d4f]{% elif node.capacity_percent > 50 %}bg-[#d99322]{% else %}bg-[#107c41]{% endif %}" style="width: {{ node.capacity_percent }}%"></div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            {% if node.status == "active" %}
+                                                <span class="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold text-[#107c41]">Active</span>
+                                            {% elif node.status == "draining" %}
+                                                <span class="rounded-full bg-[#fff7ed] px-3 py-1 text-xs font-semibold text-[#d99322]">Draining</span>
+                                            {% else %}
+                                                <span class="rounded-full bg-[#fef2f2] px-3 py-1 text-xs font-semibold text-[#dc3d4f]">Offline</span>
+                                            {% endif %}
+                                            {% if node.last_health_check %}
+                                                <p class="mt-1 text-xs text-[#8c8c8c]">Checked {{ node.last_health_check|timesince }} ago</p>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <a class="rounded border border-[#c8c8c8] bg-white px-3 py-1.5 text-xs font-semibold text-[#0067c0] hover:bg-[#f7f7f7]" href="{% url 'node_setup' node.id %}">
+                                                    <i data-lucide="terminal" class="mr-1 inline h-3 w-3"></i>Setup
+                                                </a>
+                                                <a class="rounded border border-[#c8c8c8] bg-white px-3 py-1.5 text-xs font-semibold text-[#0067c0] hover:bg-[#f7f7f7]" href="{% url 'node_health' node.id %}">
+                                                    <i data-lucide="heart-pulse" class="mr-1 inline h-3 w-3"></i>Check
+                                                </a>
+                                                <form action="{% url 'node_toggle' node.id %}" method="post" class="inline">
+                                                    {% csrf_token %}
+                                                    <button class="rounded border border-[#c8c8c8] bg-white px-3 py-1.5 text-xs font-semibold text-[#424242] hover:bg-[#f7f7f7]" type="submit">
+                                                        {% if node.status == "active" %}Drain{% else %}Activate{% endif %}
+                                                    </button>
+                                                </form>
+                                                {% if node.current_sessions == 0 %}
+                                                    <form action="{% url 'node_delete' node.id %}" method="post" class="inline" onsubmit="return confirm('Delete node \'{{ node.name }}\'?')">
+                                                        {% csrf_token %}
+                                                        <button class="rounded border border-[#fecaca] bg-[#fef2f2] px-3 py-1.5 text-xs font-semibold text-[#dc3d4f] hover:bg-[#fee2e2]" type="submit">
+                                                            <i data-lucide="trash-2" class="mr-1 inline h-3 w-3"></i>Delete
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            {% else %}
+                {% if not show_add_form and request.GET.add != "1" %}
+                    <section class="rounded-xl border border-[#e7e7e7] bg-white p-12 text-center shadow-sm">
+                        <i data-lucide="hard-drive" class="mx-auto mb-3 h-10 w-10 text-[#8c8c8c]"></i>
+                        <h2 class="text-lg font-semibold text-black">No Docker Nodes Registered</h2>
+                        <p class="mt-2 max-w-md mx-auto text-sm text-[#5c5c5c]">Register worker nodes to distribute sandbox workloads across multiple EC2 instances.</p>
+                        <a class="mt-6 inline-flex items-center gap-2 rounded-md bg-[#0067c0] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0055a3]" href="{% url 'node_list' %}?add=1">
+                            <i data-lucide="plus" class="h-4 w-4"></i>
+                            Add First Node
+                        </a>
+                    </section>
+                {% endif %}
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

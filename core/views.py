@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import uuid
 from datetime import timedelta
 
 import matplotlib
@@ -18,12 +19,16 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 from .content_loader import render_markdown
+from . import ca
 from .forms import (
+    DockerNodeForm,
     LabForm,
     ResourceProfileForm,
     SignUpForm,
+    SSHKeyUploadForm,
     StudentProfileImageForm,
     UserManagementForm,
     UserProfileForm,
@@ -33,6 +38,7 @@ from .forms import (
 from .models import (
     Activity,
     ContainerImage,
+    DockerNode,
     FlagSubmission,
     HackPhase,
     Lab,
@@ -42,10 +48,11 @@ from .models import (
     Module,
     ResourceProfile,
     SandboxSession,
+    SSHKey,
     StudentProfile,
     Tool,
 )
-from .orchestrator import _docker_api, deploy_sandbox, expire_stale_sessions, get_sandbox_status, stop_sandbox
+from .orchestrator import _docker_api, deploy_sandbox, expire_stale_sessions, get_sandbox_status, stop_sandbox, select_node
 from .services import (
     enrolled_labs_for,
     lab_progress_for,
@@ -130,6 +137,7 @@ def _build_admin_context(current_user_id=None):
         "hack_phases_data": phases_data,
         "resource_profile_count": ResourceProfile.objects.count(),
         "container_image_count": ContainerImage.objects.count(),
+        "node_count": DockerNode.objects.count(),
         "now": now,
     }
 
@@ -569,12 +577,15 @@ def instructor_lab_edit(request, lab_id):
 @user_passes_test(_is_instructor)
 def instructor_live_monitor(request):
     expire_stale_sessions()
-    sessions = SandboxSession.objects.filter(status=SandboxSession.RUNNING).select_related("user", "lab").order_by("-started_at")
+    sessions = SandboxSession.objects.filter(status=SandboxSession.RUNNING).select_related("user", "lab", "node").order_by("-started_at")
 
     total_online = sessions.count()
     lab_breakdown = {}
+    node_breakdown = {}
     for s in sessions:
         lab_breakdown[s.lab.title] = lab_breakdown.get(s.lab.title, 0) + 1
+        node_name = s.node.name if s.node else "unknown"
+        node_breakdown[node_name] = node_breakdown.get(node_name, 0) + 1
 
     return render(
         request,
@@ -585,6 +596,7 @@ def instructor_live_monitor(request):
             "sessions": sessions,
             "total_online": total_online,
             "lab_breakdown": lab_breakdown,
+            "node_breakdown": node_breakdown,
             "now": timezone.now(),
         },
     )
@@ -1030,4 +1042,491 @@ def student_profile(request):
     )
 
 
+# ---------------------------------------------------------------------------
+# Docker Node Management (admin only)
+# ---------------------------------------------------------------------------
 
+@login_required
+def node_list(request):
+    if not _is_admin(request.user):
+        messages.error(request, "Access denied.")
+        return redirect("dashboard")
+    nodes = DockerNode.objects.all()
+    active_count = nodes.filter(status=DockerNode.ACTIVE).count()
+    total_sessions = sum(n.current_sessions for n in nodes)
+    return render(
+        request,
+        "node_list.html",
+        {
+            "active_nav": "nodes",
+            "user_role_label": get_role_label(request.user),
+            "nodes": nodes,
+            "active_count": active_count,
+            "total_sessions": total_sessions,
+            "add_form": DockerNodeForm(),
+        },
+    )
+
+
+@login_required
+def node_add(request):
+    if not _is_admin(request.user):
+        messages.error(request, "Access denied.")
+        return redirect("dashboard")
+    if request.method != "POST":
+        return redirect("node_list")
+    form = DockerNodeForm(request.POST)
+    if form.is_valid():
+        node = form.save(commit=False)
+        if not node.ssh_host:
+            node.ssh_host = node.public_ip
+        if not node.docker_host:
+            node.docker_host = f"https://{node.public_ip}:2376"
+        node.save()
+        messages.success(request, f"Node '{node.name}' registered. Use 'Setup Node' to configure it remotely.")
+        return redirect("node_list")
+    nodes = DockerNode.objects.all()
+    active_count = nodes.filter(status=DockerNode.ACTIVE).count()
+    total_sessions = sum(n.current_sessions for n in nodes)
+    return render(
+        request,
+        "node_list.html",
+        {
+            "active_nav": "nodes",
+            "user_role_label": get_role_label(request.user),
+            "nodes": nodes,
+            "active_count": active_count,
+            "total_sessions": total_sessions,
+            "add_form": form,
+            "show_add_form": True,
+        },
+    )
+
+
+@login_required
+def node_delete(request, node_id):
+    if not _is_admin(request.user):
+        messages.error(request, "Access denied.")
+        return redirect("dashboard")
+    if request.method != "POST":
+        return redirect("node_list")
+    node = get_object_or_404(DockerNode, pk=node_id)
+    if node.current_sessions > 0:
+        messages.error(request, f"Cannot delete '{node.name}' — it has {node.current_sessions} active session(s). Drain it first.")
+        return redirect("node_list")
+    name = node.name
+    node.delete()
+    messages.success(request, f"Node '{name}' deleted.")
+    return redirect("node_list")
+
+
+@login_required
+def node_toggle(request, node_id):
+    if not _is_admin(request.user):
+        messages.error(request, "Access denied.")
+        return redirect("dashboard")
+    if request.method != "POST":
+        return redirect("node_list")
+    node = get_object_or_404(DockerNode, pk=node_id)
+    if node.status == DockerNode.ACTIVE:
+        node.status = DockerNode.DRAINING
+        messages.success(request, f"Node '{node.name}' set to draining — active sessions will finish, no new sessions will be placed.")
+    elif node.status == DockerNode.DRAINING:
+        node.status = DockerNode.ACTIVE
+        messages.success(request, f"Node '{node.name}' reactivated.")
+    elif node.status == DockerNode.OFFLINE:
+        node.status = DockerNode.ACTIVE
+        messages.success(request, f"Node '{node.name}' reactivated.")
+    node.save(update_fields=["status"])
+    return redirect("node_list")
+
+
+@login_required
+def node_health(request, node_id):
+    if not _is_admin(request.user):
+        return JsonResponse({"error": "access denied"}, status=403)
+    node = get_object_or_404(DockerNode, pk=node_id)
+    result = _docker_api("/_ping", method="get", timeout=5, node=node)
+    if result is not None:
+        node.status = DockerNode.ACTIVE
+        node.last_health_check = timezone.now()
+        node.save(update_fields=["status", "last_health_check"])
+        return JsonResponse({"status": "ok", "node": node.name})
+    else:
+        node.status = DockerNode.OFFLINE
+        node.last_health_check = timezone.now()
+        node.save(update_fields=["status", "last_health_check"])
+        return JsonResponse({"status": "offline", "node": node.name})
+
+
+@login_required
+def node_health_all(request):
+    if not _is_admin(request.user):
+        return redirect("dashboard")
+    nodes = DockerNode.objects.all()
+    checked = 0
+    for node in nodes:
+        result = _docker_api("/_ping", method="get", timeout=5, node=node)
+        if result is not None:
+            node.status = DockerNode.ACTIVE
+        else:
+            node.status = DockerNode.OFFLINE
+        node.last_health_check = timezone.now()
+        node.save(update_fields=["status", "last_health_check"])
+        checked += 1
+    messages.success(request, f"Health check completed for {checked} node(s).")
+    return redirect("node_list")
+
+
+# ---------------------------------------------------------------------------
+# Node SSH Setup (Phase 2)
+# ---------------------------------------------------------------------------
+
+def _build_setup_script(node, setup_token):
+    """Generate a bash script that installs Docker + TLS on a worker node."""
+    from django.conf import settings
+
+    ca_cert = ca.get_ca_cert_pem().decode()
+    app_url = settings.APP_SERVER_URL.rstrip("/")
+    swarm_token_url = f"{app_url}/admin/nodes/{node.id}/ca/token/{setup_token}/"
+    sign_url = f"{app_url}/admin/nodes/{node.id}/ca/sign/{setup_token}/"
+    callback_url = f"{app_url}/admin/nodes/{node.id}/setup-complete/{setup_token}/"
+
+    return f"""#!/bin/bash
+set -euo pipefail
+
+NODE_NAME="{node.name}"
+NODE_IP="{node.public_ip}"
+PORT_START="{node.port_start}"
+PORT_END="{node.port_end}"
+SIGN_URL="{sign_url}"
+TOKEN_URL="{swarm_token_url}"
+CALLBACK_URL="{callback_url}"
+CA_CERT_PEM='{ca_cert}'
+
+echo "[1/7] Detecting OS..."
+if command -v docker &>/dev/null; then
+    echo "Docker already installed, skipping install."
+else
+    echo "Installing Docker..."
+    if [ -f /etc/debian_version ]; then
+        apt-get update -qq
+        apt-get install -y -qq ca-certificates curl gnupg
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null || true
+        chmod a+r /etc/apt/keyrings/docker.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+        apt-get update -qq
+        apt-get install -y -qq docker-ce docker-ce-cli containerd.io
+    elif [ -f /etc/redhat-release ]; then
+        yum install -y yum-utils
+        yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        yum install -y docker-ce docker-ce-cli containerd.io
+    else
+        echo "Unsupported OS. Install Docker manually."
+        exit 1
+    fi
+    systemctl enable docker
+    systemctl start docker
+    echo "Docker installed successfully."
+fi
+
+echo "[2/7] Generating TLS keypair..."
+mkdir -p /etc/docker/tls
+cd /etc/docker/tls
+
+openssl genrsa -out server.key 2048 2>/dev/null
+openssl req -new -key server.key -out server.csr \
+    -subj "/CN=somacloud-worker-${{NODE_NAME}}/O=SomaCloud" 2>/dev/null
+
+echo "[3/7] Signing certificate with CA..."
+CSR=$(cat server.csr)
+SIGNED_CERT=$(curl -sk -X POST "{sign_url}" \
+    -H "Content-Type: application/json" \
+    -d "{{\"csr\": \"$(echo "$CSR" | tr '\\n' '~')}}")
+# Replace newlines
+SIGNED_CERT=$(echo "$SIGNED_CERT" | sed 's/~/\\n/g; s/^"//; s/"$//')
+
+if [ -z "$SIGNED_CERT" ] || [ "$SIGNED_CERT" = "null" ]; then
+    echo "ERROR: Certificate signing failed."
+    exit 1
+fi
+
+echo "$SIGNED_CERT" > server.crt
+echo "$CA_CERT_PEM" > ca.pem
+rm -f server.csr
+echo "Certificates installed."
+
+echo "[4/7] Configuring Docker daemon..."
+cat > /etc/docker/daemon.json <<DAEMON
+{{
+    "hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2376"],
+    "tls": true,
+    "tlsverify": true,
+    "tlscacert": "/etc/docker/tls/ca.pem",
+    "tlscert": "/etc/docker/tls/server.crt",
+    "tlskey": "/etc/docker/tls/server.key"
+}}
+DAEMON
+
+# Add systemd override to avoid conflicts with ExecStart
+mkdir -p /etc/systemd/system/docker.service.d
+cat > /etc/systemd/system/docker.service.d/override.conf <<EOF
+[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd
+EOF
+
+systemctl daemon-reload
+systemctl restart docker
+echo "Docker daemon configured and restarted."
+
+echo "[5/7] Waiting for Docker to start..."
+sleep 3
+docker info >/dev/null 2>&1 || (sleep 5 && docker info >/dev/null 2>&1)
+echo "Docker is responsive."
+
+echo "[6/7] Joining Docker Swarm..."
+JOIN_TOKEN=$(curl -sk "{token_url}")
+JOIN_TOKEN=$(echo "$JOIN_TOKEN" | sed 's/^"//; s/"$//')
+if [ -z "$JOIN_TOKEN" ] || [ "$JOIN_TOKEN" = "null" ]; then
+    echo "ERROR: Could not retrieve swarm join token."
+    exit 1
+fi
+docker swarm join --token "$JOIN_TOKEN" {settings.SWARM_MANAGER_IP}:2377 || echo "Already in swarm or join failed (continuing)."
+
+echo "[7/7] Notifying app server..."
+curl -sk -X POST "{callback_url}" -H "Content-Type: application/json"
+
+echo ""
+echo "=== Setup complete for ${{NODE_NAME}} ==="
+"""
+
+
+@login_required
+def node_setup(request, node_id):
+    if not _is_admin(request.user):
+        messages.error(request, "Access denied.")
+        return redirect("dashboard")
+    node = get_object_or_404(DockerNode, pk=node_id)
+
+    if request.method == "POST":
+        import paramiko
+        import io
+
+        if not node.ssh_key or not node.ssh_key.private_key:
+            messages.error(request, f"No SSH key assigned to '{node.name}'. Edit the node and select an SSH key first.")
+            return redirect("node_list")
+
+        # Read the pre-registered key
+        try:
+            key_data = node.ssh_key.private_key.open("rb").read()
+        except Exception as exc:
+            messages.error(request, f"Could not read SSH key file: {exc}")
+            return redirect("node_list")
+
+        ssh_passphrase = request.POST.get("ssh_passphrase", "") or None
+
+        try:
+            pkey = paramiko.Ed25519Key.from_private_key(io.BytesIO(key_data), password=ssh_passphrase)
+        except Exception:
+            try:
+                pkey = paramiko.RSAKey.from_private_key(io.BytesIO(key_data), password=ssh_passphrase)
+            except Exception:
+                try:
+                    pkey = paramiko.ECDSAKey.from_private_key(io.BytesIO(key_data), password=ssh_passphrase)
+                except Exception:
+                    messages.error(request, "Could not parse SSH key. Ensure it's a valid Ed25519, RSA, or ECDSA key.")
+                    return redirect("node_list")
+
+        # Generate setup token
+        token = uuid.uuid4().hex
+        node.setup_token = token
+        node.setup_token_expires = timezone.now() + timezone.timedelta(minutes=30)
+        node.save(update_fields=["setup_token", "setup_token_expires"])
+
+        # Build script
+        script = _build_setup_script(node, token)
+
+        # Connect via SSH
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        connect_kwargs = {
+            "hostname": node.ssh_host or node.public_ip,
+            "port": node.ssh_port,
+            "username": node.ssh_user,
+            "pkey": pkey,
+            "timeout": 15,
+        }
+
+        try:
+            ssh.connect(**connect_kwargs)
+        except Exception as exc:
+            messages.error(request, f"SSH connection failed: {exc}")
+            return redirect("node_list")
+
+        # Execute setup script
+        try:
+            stdin, stdout, stderr = ssh.exec_command("bash -s", timeout=600)
+            stdin.write(script)
+            stdin.channel.shutdown_write()
+            output = stdout.read().decode(errors="replace")
+            errors = stderr.read().decode(errors="replace")
+            exit_code = stdout.channel.recv_exit_status()
+        except Exception as exc:
+            messages.error(request, f"Setup script execution failed: {exc}")
+            ssh.close()
+            return redirect("node_list")
+        finally:
+            ssh.close()
+
+        # Generate client cert for the app server to talk to this worker
+        try:
+            ca.generate_client_cert(node.name)
+        except Exception as exc:
+            logger.warning("Client cert generation failed for %s: %s", node.name, exc)
+
+        if exit_code == 0:
+            messages.success(request, f"Node '{node.name}' setup completed successfully!")
+        else:
+            messages.warning(request, f"Node '{node.name}' setup finished with exit code {exit_code}. Check output.")
+            logger.error("Setup output for %s:\n%s\nSTDERR:\n%s", node.name, output, errors)
+
+        return redirect("node_list")
+
+    return render(request, "node_setup.html", {
+        "active_nav": "nodes",
+        "user_role_label": get_role_label(request.user),
+        "node": node,
+    })
+
+
+# ---------------------------------------------------------------------------
+# CA endpoints (called by worker setup scripts, token-authenticated)
+# ---------------------------------------------------------------------------
+
+def _verify_setup_token(request, node_id, token):
+    """Verify setup token and return the node, or None."""
+    node = DockerNode.objects.filter(pk=node_id, setup_token=token).first()
+    if not node or not node.setup_token_expires:
+        return None
+    if timezone.now() > node.setup_token_expires:
+        return None
+    return node
+
+
+@csrf_exempt
+def node_ca_sign(request, node_id, token):
+    """Sign a CSR submitted by a worker during setup."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    node = _verify_setup_token(request, node_id, token)
+    if not node:
+        return JsonResponse({"error": "invalid or expired token"}, status=403)
+
+    try:
+        body = json.loads(request.body)
+        csr_pem = body.get("csr", "").replace("~", "\n").encode()
+        signed_cert = ca.sign_csr(csr_pem)
+        return JsonResponse({"cert": signed_cert.decode()})
+    except Exception as exc:
+        logger.error("CSR signing failed for %s: %s", node.name, exc)
+        return JsonResponse({"error": str(exc)}, status=400)
+
+
+@csrf_exempt
+def node_swarm_token(request, node_id, token):
+    """Return the swarm join token for a worker."""
+    node = _verify_setup_token(request, node_id, token)
+    if not node:
+        return JsonResponse({"error": "invalid or expired token"}, status=403)
+
+    try:
+        resp = _docker_api("/swarm/inspect", method="get")
+        if resp:
+            join_token = resp.get("JoinTokens", {}).get("Worker", "")
+            return JsonResponse({"token": join_token})
+    except Exception:
+        pass
+    return JsonResponse({"error": "could not retrieve swarm token"}, status=500)
+
+
+@csrf_exempt
+def node_setup_complete(request, node_id, token):
+    """Called by the worker script after setup is done."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    node = _verify_setup_token(request, node_id, token)
+    if not node:
+        return JsonResponse({"error": "invalid or expired token"}, status=403)
+
+    node.status = DockerNode.ACTIVE
+    node.setup_token = ""
+    node.setup_token_expires = None
+    node.last_health_check = timezone.now()
+    node.save(update_fields=["status", "setup_token", "setup_token_expires", "last_health_check"])
+    logger.info("Node '%s' setup completed, marked active.", node.name)
+    return JsonResponse({"status": "ok"})
+
+
+# ---------------------------------------------------------------------------
+# SSH Key Management (admin only)
+# ---------------------------------------------------------------------------
+
+@login_required
+def sshkey_list(request):
+    if not _is_admin(request.user):
+        messages.error(request, "Access denied.")
+        return redirect("dashboard")
+    keys = SSHKey.objects.select_related("uploaded_by").all()
+    upload_form = SSHKeyUploadForm()
+    return render(request, "sshkey_list.html", {
+        "active_nav": "sshkeys",
+        "user_role_label": get_role_label(request.user),
+        "keys": keys,
+        "upload_form": upload_form,
+    })
+
+
+@login_required
+def sshkey_upload(request):
+    if not _is_admin(request.user):
+        messages.error(request, "Access denied.")
+        return redirect("dashboard")
+    if request.method != "POST":
+        return redirect("sshkey_list")
+    form = SSHKeyUploadForm(request.POST, request.FILES)
+    if form.is_valid():
+        key = form.save(commit=False)
+        key.uploaded_by = request.user
+        key.save()
+        messages.success(request, f"SSH key '{key.name}' uploaded. Fingerprint: {key.fingerprint}")
+        return redirect("sshkey_list")
+    keys = SSHKey.objects.select_related("uploaded_by").all()
+    return render(request, "sshkey_list.html", {
+        "active_nav": "sshkeys",
+        "user_role_label": get_role_label(request.user),
+        "keys": keys,
+        "upload_form": form,
+        "show_upload": True,
+    })
+
+
+@login_required
+def sshkey_delete(request, key_id):
+    if not _is_admin(request.user):
+        messages.error(request, "Access denied.")
+        return redirect("dashboard")
+    if request.method != "POST":
+        return redirect("sshkey_list")
+    key = get_object_or_404(SSHKey, pk=key_id)
+    if DockerNode.objects.filter(ssh_key=key).exists():
+        messages.error(request, f"Cannot delete '{key.name}' — it is assigned to one or more nodes. Remove the assignment first.")
+        return redirect("sshkey_list")
+    name = key.name
+    key.private_key.delete(save=False)
+    key.delete()
+    messages.success(request, f"SSH key '{name}' deleted.")
+    return redirect("sshkey_list")

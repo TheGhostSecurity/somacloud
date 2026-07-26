@@ -47,10 +47,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "sandbox.wsgi.application"
 
+# Database — PostgreSQL in production, SQLite for local dev fallback
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.sqlite3"),
+        "NAME": os.getenv("DB_NAME", str(BASE_DIR / "db.sqlite3")),
+        "USER": os.getenv("DB_USER", ""),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", ""),
+        "PORT": os.getenv("DB_PORT", ""),
     }
 }
 
@@ -77,15 +82,29 @@ LOGOUT_REDIRECT_URL = "home"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Docker Remote API. Docker is exposed with mutual TLS on this host.
+# ---------------------------------------------------------------------------
+# Docker Swarm multi-node configuration
+# ---------------------------------------------------------------------------
+
+# Manager node (this server) — used for swarm management and local fallback
 DOCKER_HOST = os.getenv("DOCKER_HOST", "https://127.0.0.1:2376")
-DOCKER_TLS_CERT_PATH = os.getenv("DOCKER_TLS_CERT_PATH", "/etc/docker/certs")
+DOCKER_TLS_CERT_DIR = os.getenv("DOCKER_TLS_CERT_DIR", str(BASE_DIR / "certs"))
 DOCKER_TLS_CA_FILE = os.getenv("DOCKER_TLS_CA_FILE", "ca.pem")
-DOCKER_TLS_CERT_FILE = os.getenv("DOCKER_TLS_CERT_FILE", "client-cert.pem")
-DOCKER_TLS_KEY_FILE = os.getenv("DOCKER_TLS_KEY_FILE", "client-key.pem")
+DOCKER_TLS_CERT_FILE = os.getenv("DOCKER_TLS_CERT_FILE", "cert.pem")
+DOCKER_TLS_KEY_FILE = os.getenv("DOCKER_TLS_KEY_FILE", "key.pem")
 DOCKER_TLS_VERIFY = os.getenv("DOCKER_TLS_VERIFY", "true").lower() in {"1", "true", "yes"}
 DOCKER_API_TIMEOUT = int(os.getenv("DOCKER_API_TIMEOUT", "30"))
-DOCKER_SERVER_PUBLIC_IP = os.getenv("DOCKER_SERVER_PUBLIC_IP", "192.168.1.3")
+
+# Public-facing URL construction
 DOCKER_PUBLIC_SCHEME = os.getenv("DOCKER_PUBLIC_SCHEME", "http")
+
+# Deprecated single-node fallback (used only when no nodes are registered)
+DOCKER_SERVER_PUBLIC_IP = os.getenv("DOCKER_SERVER_PUBLIC_IP", "192.168.1.3")
 DOCKER_PORT_START = int(os.getenv("DOCKER_PORT_START", "9000"))
 DOCKER_PORT_END = int(os.getenv("DOCKER_PORT_END", "9100"))
+
+# Swarm manager IP for join commands
+SWARM_MANAGER_IP = os.getenv("SWARM_MANAGER_IP", "16.192.120.187")
+
+# App server base URL (workers reach this for CA signing + token endpoints)
+APP_SERVER_URL = os.getenv("APP_SERVER_URL", "https://16.192.120.187")

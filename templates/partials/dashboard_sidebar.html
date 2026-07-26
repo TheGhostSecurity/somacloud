@@ -30,6 +30,16 @@
                 <i data-lucide="bar-chart-3" class="h-5 w-5 {% if active_nav == 'analytics' %}text-[#0067c0]{% else %}text-[#5c5c5c]{% endif %}"></i>
                 Student Analytics
             </a>
+            {% if request.user.is_staff or request.user.is_superuser %}
+            <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'nodes' %}bg-[#e8f3ff] font-semibold text-[#0067c0]{% else %}text-[#424242] hover:bg-[#f5f5f5]{% endif %}" href="{% url 'node_list' %}">
+                <i data-lucide="hard-drive" class="h-5 w-5 {% if active_nav == 'nodes' %}text-[#0067c0]{% else %}text-[#5c5c5c]{% endif %}"></i>
+                Docker Nodes
+            </a>
+            <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'sshkeys' %}bg-[#e8f3ff] font-semibold text-[#0067c0]{% else %}text-[#424242] hover:bg-[#f5f5f5]{% endif %}" href="{% url 'sshkey_list' %}">
+                <i data-lucide="key" class="h-5 w-5 {% if active_nav == 'sshkeys' %}text-[#0067c0]{% else %}text-[#5c5c5c]{% endif %}"></i>
+                SSH Keys
+            </a>
+            {% endif %}
         {% endif %}
         {% if user_role_label == "Student" %}
             <a class="flex items-center gap-3 rounded-md px-3 py-2 {% if active_nav == 'labs' %}bg-[#e8f3ff] font-semibold text-[#0067c0]{% else %}text-[#424242] hover:bg-[#f5f5f5]{% endif %}" href="{% url 'student_labs' %}">

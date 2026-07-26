@@ -7,7 +7,7 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 
-from .models import ContainerImage, HackPhase, Lab, ResourceProfile, StudentProfile
+from .models import ContainerImage, DockerNode, HackPhase, Lab, ResourceProfile, SSHKey, StudentProfile
 
 
 User = get_user_model()
@@ -377,3 +377,37 @@ def get_role_label(user):
     if user.groups.filter(name__iexact="Instructor").exists():
         return "Instructor"
     return "Student"
+
+
+class DockerNodeForm(forms.ModelForm):
+    class Meta:
+        model = DockerNode
+        fields = [
+            "name", "public_ip", "ssh_host", "ssh_port", "ssh_user", "ssh_key",
+            "docker_host", "port_start", "port_end", "total_cpu", "total_memory_mb",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        base_css = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        small_css = base_css + " w-32"
+        self.fields["ssh_key"].queryset = SSHKey.objects.all()
+        for name, field in self.fields.items():
+            if name in ("port_start", "port_end", "ssh_port"):
+                field.widget.attrs["class"] = small_css
+            elif name in ("total_cpu", "total_memory_mb"):
+                field.widget.attrs["class"] = small_css
+            else:
+                field.widget.attrs["class"] = base_css
+
+
+class SSHKeyUploadForm(forms.ModelForm):
+    class Meta:
+        model = SSHKey
+        fields = ["name", "private_key"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        base_css = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+        self.fields["name"].widget.attrs["class"] = base_css
+        self.fields["private_key"].widget.attrs["class"] = base_css + " text-sm"

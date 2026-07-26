@@ -179,6 +179,91 @@ class LabProgress(models.Model):
         return f"{self.user.username}: {self.lab} - {self.get_stage_display()}"
 
 
+class DockerNode(models.Model):
+    ACTIVE = "active"
+    DRAINING = "draining"
+    OFFLINE = "offline"
+
+    STATUS_CHOICES = (
+        (ACTIVE, "Active"),
+        (DRAINING, "Draining"),
+        (OFFLINE, "Offline"),
+    )
+
+    name = models.CharField(max_length=80, unique=True)
+    docker_node_id = models.CharField(max_length=128, blank=True, help_text="Swarm node ID")
+    public_ip = models.GenericIPAddressField(help_text="Student-facing IP for terminal URLs")
+    docker_host = models.CharField(max_length=256, help_text="Docker API endpoint, e.g. https://10.0.1.5:2376")
+    ssh_host = models.GenericIPAddressField(null=True, blank=True, default=None, help_text="SSH IP (defaults to public_ip)")
+    ssh_port = models.PositiveIntegerField(default=22)
+    ssh_user = models.CharField(max_length=64, default="ubuntu")
+    ssh_key = models.ForeignKey("SSHKey", on_delete=models.SET_NULL, null=True, blank=True, help_text="Pre-registered SSH key for setup")
+    port_start = models.PositiveIntegerField(default=9000)
+    port_end = models.PositiveIntegerField(default=9100)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=ACTIVE)
+    total_cpu = models.DecimalField(max_digits=4, decimal_places=2, default=2, help_text="Total CPU cores on this node")
+    total_memory_mb = models.PositiveIntegerField(default=2048, help_text="Total RAM in MB")
+    current_sessions = models.PositiveIntegerField(default=0, help_text="Active sandbox count")
+    last_health_check = models.DateTimeField(null=True, blank=True)
+    setup_token = models.CharField(max_length=64, blank=True, default="")
+    setup_token_expires = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.public_ip})"
+
+    @property
+    def is_available(self):
+        return self.status == self.ACTIVE
+
+    @property
+    def capacity_percent(self):
+        max_sessions = max(1, (self.port_end - self.port_start + 1) // 2)
+        return round((self.current_sessions / max_sessions) * 100)
+
+
+class SSHKey(models.Model):
+    name = models.CharField(max_length=80, unique=True, help_text="Human label, e.g. somacloud-prod")
+    private_key = models.FileField(upload_to="keys/", help_text="PEM-encoded private key file")
+    fingerprint = models.CharField(max_length=72, blank=True, editable=False, help_text="SHA-256 fingerprint, auto-calculated")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.private_key and not self.fingerprint:
+            self._compute_fingerprint()
+            super().save(update_fields=["fingerprint"])
+        if self.private_key:
+            import os
+            os.chmod(self.private_key.path, 0o600)
+
+    def _compute_fingerprint(self):
+        import hashlib, base64
+        try:
+            from cryptography.hazmat.primitives import serialization
+            key_data = self.private_key.open("rb").read()
+            key = serialization.load_pem_private_key(key_data, password=None)
+            pub = key.public_key().public_bytes(
+                serialization.Encoding.OpenSSH, serialization.PublicFormat.OpenSSH
+            )
+            digest = hashlib.sha256(pub).digest()
+            self.fingerprint = "SHA256:" + base64.b64encode(digest).decode().rstrip("=")
+        except Exception:
+            self.fingerprint = "unknown"
+
+
 class SandboxSession(models.Model):
     PENDING = "pending"
     RUNNING = "running"
@@ -196,6 +281,7 @@ class SandboxSession(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sandbox_sessions")
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="sandbox_sessions")
+    node = models.ForeignKey(DockerNode, on_delete=models.SET_NULL, null=True, blank=True, related_name="sessions")
     container_id = models.CharField(max_length=128, blank=True)
     service_container_id = models.CharField(max_length=128, blank=True)
     service_ip = models.CharField(max_length=45, blank=True, help_text="IP of the scenario service container")
