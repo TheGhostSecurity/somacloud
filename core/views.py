@@ -52,7 +52,7 @@ from .models import (
     StudentProfile,
     Tool,
 )
-from .orchestrator import _docker_api, deploy_sandbox, expire_stale_sessions, get_sandbox_status, stop_sandbox, select_node
+from .orchestrator import _docker_api, auto_detect_resources, deploy_sandbox, expire_stale_sessions, get_sandbox_status, stop_sandbox, select_node, _node_usage
 from .services import (
     enrolled_labs_for,
     lab_progress_for,
@@ -1051,9 +1051,17 @@ def node_list(request):
     if not _is_admin(request.user):
         messages.error(request, "Access denied.")
         return redirect("dashboard")
-    nodes = DockerNode.objects.all()
-    active_count = nodes.filter(status=DockerNode.ACTIVE).count()
+    nodes = list(DockerNode.objects.all())
+    active_count = sum(1 for n in nodes if n.status == DockerNode.ACTIVE)
     total_sessions = sum(n.current_sessions for n in nodes)
+    for node in nodes:
+        used_cpu, used_mem = _node_usage(node)
+        total_cpu = float(node.total_cpu) if node.total_cpu else 0
+        total_mem = node.total_memory_mb or 0
+        node.cpu_used = used_cpu
+        node.cpu_percent = round((used_cpu / total_cpu * 100) if total_cpu > 0 else 0)
+        node.mem_used = used_mem
+        node.mem_percent = round((used_mem / total_mem * 100) if total_mem > 0 else 0)
     return render(
         request,
         "node_list.html",
@@ -1129,12 +1137,16 @@ def node_toggle(request, node_id):
         return redirect("node_list")
     node = get_object_or_404(DockerNode, pk=node_id)
     if node.status == DockerNode.ACTIVE:
-        node.status = DockerNode.DRAINING
-        messages.success(request, f"Node '{node.name}' set to draining — active sessions will finish, no new sessions will be placed.")
-    elif node.status == DockerNode.DRAINING:
-        node.status = DockerNode.ACTIVE
-        messages.success(request, f"Node '{node.name}' reactivated.")
-    elif node.status == DockerNode.OFFLINE:
+        if node.current_sessions > 0:
+            messages.warning(
+                request,
+                f"Node '{node.name}' has {node.current_sessions} active session(s). "
+                f"They will be orphaned when the EC2 instance is stopped. "
+                f"Use 'Drain' first to let them finish, or confirm deactivation.",
+            )
+        node.status = DockerNode.OFFLINE
+        messages.success(request, f"Node '{node.name}' deactivated. No new sessions will be placed here.")
+    else:
         node.status = DockerNode.ACTIVE
         messages.success(request, f"Node '{node.name}' reactivated.")
     node.save(update_fields=["status"])
@@ -1151,7 +1163,13 @@ def node_health(request, node_id):
         node.status = DockerNode.ACTIVE
         node.last_health_check = timezone.now()
         node.save(update_fields=["status", "last_health_check"])
-        return JsonResponse({"status": "ok", "node": node.name})
+        auto_detect_resources(node)
+        return JsonResponse({
+            "status": "ok",
+            "node": node.name,
+            "cpu": str(node.total_cpu),
+            "memory_mb": node.total_memory_mb,
+        })
     else:
         node.status = DockerNode.OFFLINE
         node.last_health_check = timezone.now()
@@ -1169,12 +1187,13 @@ def node_health_all(request):
         result = _docker_api("/_ping", method="get", timeout=5, node=node)
         if result is not None:
             node.status = DockerNode.ACTIVE
+            auto_detect_resources(node)
         else:
             node.status = DockerNode.OFFLINE
         node.last_health_check = timezone.now()
         node.save(update_fields=["status", "last_health_check"])
         checked += 1
-    messages.success(request, f"Health check completed for {checked} node(s).")
+    messages.success(request, f"Health check completed for {checked} node(s). Resources auto-detected.")
     return redirect("node_list")
 
 

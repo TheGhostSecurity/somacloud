@@ -17,12 +17,112 @@ logger = logging.getLogger(__name__)
 # Node selection
 # ---------------------------------------------------------------------------
 
-def select_node():
-    """Pick the least-loaded active node. Falls back to local Docker if none registered."""
-    nodes = DockerNode.objects.filter(status=DockerNode.ACTIVE).order_by("current_sessions", "name")
-    if nodes.exists():
-        return nodes.first()
-    return None
+def _node_usage(node):
+    """Sum CPU and memory consumed by all running sessions on a node.
+
+    Returns (used_cpu, used_mem_mb).  If the database is unavailable or no
+    sessions exist, returns (0, 0).
+    """
+    running = SandboxSession.objects.filter(
+        node=node, status=SandboxSession.RUNNING
+    ).select_related("lab__resource_profile")
+    used_cpu = 0.0
+    used_mem = 0
+    for s in running:
+        rp = s.lab.resource_profile
+        if rp:
+            used_cpu += float(rp.cpu_count)
+            used_mem += rp.memory_mb
+    return used_cpu, used_mem
+
+
+def select_node(session=None):
+    """Pick the best active node for a given session's resource profile.
+
+    Scoring considers three dimensions:
+      1. Port capacity  — can the node host another sandbox at all?
+      2. CPU headroom  — does the node have enough CPU for the lab?
+      3. Memory headroom — does the node have enough RAM for the lab?
+
+    When a *session* (with a lab resource profile) is provided, nodes that
+    cannot satisfy CPU or memory requirements are skipped.  Among eligible
+    nodes the one with the most remaining headroom wins (best-fit).
+
+    When no session is provided, a simple least-sessions heuristic is used.
+    """
+    active_nodes = DockerNode.objects.filter(status=DockerNode.ACTIVE).order_by("name")
+
+    # Determine what the incoming sandbox needs
+    needed_cpu = 0.0
+    needed_mem = 0
+    if session and session.lab and session.lab.resource_profile:
+        rp = session.lab.resource_profile
+        needed_cpu = float(rp.cpu_count)
+        needed_mem = rp.memory_mb
+
+    best = None
+    best_score = -1.0
+
+    for node in active_nodes:
+        # --- port capacity gate ---
+        max_sessions = max(1, (node.port_end - node.port_start + 1) // 2)
+        if node.current_sessions >= max_sessions:
+            continue  # no ports left
+
+        # --- resource gate (only when we know what the lab needs) ---
+        if needed_cpu or needed_mem:
+            total_cpu = float(node.total_cpu) if node.total_cpu else 0
+            total_mem = node.total_memory_mb or 0
+            used_cpu, used_mem = _node_usage(node)
+
+            avail_cpu = total_cpu - used_cpu
+            avail_mem = total_mem - used_mem
+
+            if needed_cpu > avail_cpu + 0.01 or needed_mem > avail_mem + 10:
+                continue  # can't fit this lab
+
+            # score = normalised remaining headroom (higher = better)
+            score = 0.0
+            if total_cpu > 0:
+                score += (avail_cpu - needed_cpu) / total_cpu
+            if total_mem > 0:
+                score += (avail_mem - needed_mem) / total_mem
+        else:
+            # no resource info — fall back to most remaining port capacity
+            score = float(max_sessions - node.current_sessions)
+
+        if score > best_score:
+            best_score = score
+            best = node
+
+    return best
+
+
+def auto_detect_resources(node):
+    """Query the Docker /info endpoint to populate node CPU and memory.
+
+    Called during health checks so the admin never has to enter these manually.
+    Returns True if the node was updated, False if Docker was unreachable.
+    """
+    info = _docker_api("/info", method="get", node=node)
+    if info is None:
+        return False
+    ncpu = info.get("NCPU")
+    mem_total = info.get("MemTotal")
+    changed = False
+    if ncpu is not None:
+        ncpu = int(ncpu)
+        if float(node.total_cpu) != ncpu:
+            node.total_cpu = ncpu
+            changed = True
+    if mem_total is not None:
+        mem_mb = int(mem_total) // (1024 * 1024)
+        if node.total_memory_mb != mem_mb:
+            node.total_memory_mb = mem_mb
+            changed = True
+    if changed:
+        node.save(update_fields=["total_cpu", "total_memory_mb"])
+    return True
 
 
 def get_node_docker_host(node=None):
@@ -231,7 +331,7 @@ def deploy_sandbox(session):
         logger.error("Lab %s has no ttyd terminal container selected", lab.id)
         return _fail(session, [], None)
 
-    node = select_node()
+    node = select_node(session=session)
     if node is None:
         logger.error("No active Docker nodes available")
         session.status = SandboxSession.ERROR
