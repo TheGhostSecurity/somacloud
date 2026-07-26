@@ -102,7 +102,6 @@
                         <p class="text-sm text-[#5c5c5c]">Manage your cyber security labs.</p>
                     </div>
                     <div class="flex gap-1 overflow-x-auto" id="phaseTabs">
-                        <button class="phase-tab shrink-0 rounded-md px-4 py-2 text-sm font-semibold transition-colors" data-phase="" style="background-color:#0067c0;color:#fff">All</button>
                         {% for phase in hack_phases %}
                             <button class="phase-tab shrink-0 rounded-md px-4 py-2 text-sm font-semibold text-[#424242] transition-colors hover:bg-[#eaf4ff]" data-phase="{{ phase.id }}">{{ phase.name }}</button>
                         {% endfor %}
@@ -182,17 +181,27 @@
                             tabs.forEach(function(t) {
                                 t.style.backgroundColor = '';
                                 t.style.color = '#424242';
-                                t.classList.remove('bg-[#0067c0]', 'text-white');
                             });
                             this.style.backgroundColor = '#0067c0';
                             this.style.color = '#fff';
                             const phase = this.dataset.phase;
                             rows.forEach(function(row) {
-                                row.style.display = (!phase || row.dataset.phase === phase) ? '' : 'none';
+                                row.style.display = (row.dataset.phase === phase) ? '' : 'none';
                             });
                         });
                     });
+                    if (tabs.length) tabs[0].click();
                 })();
+
+                function filterByPhase(phaseId) {
+                    var tabs = document.querySelectorAll('.phase-tab');
+                    tabs.forEach(function(t) {
+                        if (t.dataset.phase === phaseId) {
+                            t.click();
+                        }
+                    });
+                    document.getElementById('phaseTabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             </script>
 
             {% if hack_phases %}
@@ -206,7 +215,7 @@
                     </div>
                     <div class="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
                         {% for phase in hack_phases %}
-                            <div class="rounded-lg border border-[#e0e0e0] bg-[#fafafa] p-4" style="border-left: 3px solid {% cycle '#3b82f6' '#ef4444' '#8b5cf6' '#f59e0b' '#6b7280' '#06b6d4' '#f97316' %}">
+                            <button class="rounded-lg border border-[#e0e0e0] bg-[#fafafa] p-4 text-left transition-colors hover:border-[#9ecbfa] hover:bg-[#f0f7ff] cursor-pointer" style="border-left: 3px solid {% cycle '#3b82f6' '#ef4444' '#8b5cf6' '#f59e0b' '#6b7280' '#06b6d4' '#f97316' %}" onclick="filterByPhase('{{ phase.id }}')">
                                 <div class="flex items-center gap-2">
                                     <svg class="h-5 w-5 shrink-0 text-[#0067c0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                         {% if forloop.counter == 1 %}
@@ -229,7 +238,7 @@
                                 </div>
                                 <p class="mt-1 text-xs text-[#5c5c5c]">{{ phase.description|default:""|truncatechars:60 }}</p>
                                 <p class="mt-2 text-sm font-semibold text-[#0067c0]">{{ phase.labs.count }} lab{{ phase.labs.count|pluralize }}</p>
-                            </div>
+                            </button>
                         {% endfor %}
                     </div>
                 </section>
