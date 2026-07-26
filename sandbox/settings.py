@@ -107,4 +107,4 @@ DOCKER_PORT_END = int(os.getenv("DOCKER_PORT_END", "9100"))
 SWARM_MANAGER_IP = os.getenv("SWARM_MANAGER_IP", "16.192.120.187")
 
 # App server base URL (workers reach this for CA signing + token endpoints)
-APP_SERVER_URL = os.getenv("APP_SERVER_URL", "https://16.192.120.187")
+APP_SERVER_URL = os.getenv("APP_SERVER_URL", "http://16.192.120.187:8000")

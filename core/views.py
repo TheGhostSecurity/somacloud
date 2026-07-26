@@ -1255,37 +1255,57 @@ if command -v docker &>/dev/null; then
 else
     echo "Installing Docker..."
     if [ -f /etc/debian_version ]; then
-        apt-get update -qq
-        apt-get install -y -qq ca-certificates curl gnupg
-        install -m 0755 -d /etc/apt/keyrings
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null || true
-        chmod a+r /etc/apt/keyrings/docker.gpg
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
-        apt-get update -qq
-        apt-get install -y -qq docker-ce docker-ce-cli containerd.io
+        # Detect distro: Ubuntu gets ubuntu repo, Debian/Kali gets debian repo
+        . /etc/os-release
+        if [ "$ID" = "ubuntu" ]; then
+            DOCKER_REPO_URL="https://download.docker.com/linux/ubuntu"
+            DOCKER_GPG_URL="https://download.docker.com/linux/ubuntu/gpg"
+            CODENAME="$VERSION_CODENAME"
+        else
+            # Debian, Kali, etc. — use debian repo
+            DOCKER_REPO_URL="https://download.docker.com/linux/debian"
+            DOCKER_GPG_URL="https://download.docker.com/linux/debian/gpg"
+            # Kali uses kali-rolling which isn't in Docker repos; map to bookworm
+            if [ "$ID" = "kali" ]; then
+                CODENAME="bookworm"
+            else
+                CODENAME="$VERSION_CODENAME"
+            fi
+        fi
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq ca-certificates curl gnupg
+        sudo install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL "$DOCKER_GPG_URL" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null || true
+        sudo chmod a+r /etc/apt/keyrings/docker.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] $DOCKER_REPO_URL $CODENAME stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io
     elif [ -f /etc/redhat-release ]; then
-        yum install -y yum-utils
-        yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-        yum install -y docker-ce docker-ce-cli containerd.io
+        sudo yum install -y yum-utils
+        sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        sudo yum install -y docker-ce docker-ce-cli containerd.io
     else
         echo "Unsupported OS. Install Docker manually."
         exit 1
     fi
-    systemctl enable docker
-    systemctl start docker
+    sudo systemctl enable docker
+    sudo systemctl start docker
     echo "Docker installed successfully."
 fi
 
+# Ensure current user can run docker without sudo
+sudo usermod -aG docker "$USER" 2>/dev/null || true
+
 echo "[2/7] Generating TLS keypair..."
-mkdir -p /etc/docker/tls
+sudo mkdir -p /etc/docker/tls
 cd /etc/docker/tls
 
-openssl genrsa -out server.key 2048 2>/dev/null
-openssl req -new -key server.key -out server.csr \
+sudo openssl genrsa -out server.key 2048 2>/dev/null
+sudo openssl req -new -key server.key -out server.csr \
     -subj "/CN=somacloud-worker-${{NODE_NAME}}/O=SomaCloud" 2>/dev/null
 
 echo "[3/7] Signing certificate with CA..."
-CSR=$(cat server.csr)
+CSR=$(sudo cat server.csr)
 SIGNED_CERT=$(curl -sk -X POST "{sign_url}" \
     -H "Content-Type: application/json" \
     -d "{{\"csr\": \"$(echo "$CSR" | tr '\\n' '~')}}")
@@ -1297,13 +1317,13 @@ if [ -z "$SIGNED_CERT" ] || [ "$SIGNED_CERT" = "null" ]; then
     exit 1
 fi
 
-echo "$SIGNED_CERT" > server.crt
-echo "$CA_CERT_PEM" > ca.pem
-rm -f server.csr
+echo "$SIGNED_CERT" | sudo tee server.crt > /dev/null
+echo "$CA_CERT_PEM" | sudo tee ca.pem > /dev/null
+sudo rm -f server.csr
 echo "Certificates installed."
 
 echo "[4/7] Configuring Docker daemon..."
-cat > /etc/docker/daemon.json <<DAEMON
+sudo tee /etc/docker/daemon.json > /dev/null <<DAEMON
 {{
     "hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2376"],
     "tls": true,
@@ -1315,20 +1335,20 @@ cat > /etc/docker/daemon.json <<DAEMON
 DAEMON
 
 # Add systemd override to avoid conflicts with ExecStart
-mkdir -p /etc/systemd/system/docker.service.d
-cat > /etc/systemd/system/docker.service.d/override.conf <<EOF
+sudo mkdir -p /etc/systemd/system/docker.service.d
+sudo tee /etc/systemd/system/docker.service.d/override.conf > /dev/null <<EOF
 [Service]
 ExecStart=
 ExecStart=/usr/bin/dockerd
 EOF
 
-systemctl daemon-reload
-systemctl restart docker
+sudo systemctl daemon-reload
+sudo systemctl restart docker
 echo "Docker daemon configured and restarted."
 
 echo "[5/7] Waiting for Docker to start..."
 sleep 3
-docker info >/dev/null 2>&1 || (sleep 5 && docker info >/dev/null 2>&1)
+sudo docker info >/dev/null 2>&1 || (sleep 5 && sudo docker info >/dev/null 2>&1)
 echo "Docker is responsive."
 
 echo "[6/7] Joining Docker Swarm..."
@@ -1338,7 +1358,7 @@ if [ -z "$JOIN_TOKEN" ] || [ "$JOIN_TOKEN" = "null" ]; then
     echo "ERROR: Could not retrieve swarm join token."
     exit 1
 fi
-docker swarm join --token "$JOIN_TOKEN" {settings.SWARM_MANAGER_IP}:2377 || echo "Already in swarm or join failed (continuing)."
+sudo docker swarm join --token "$JOIN_TOKEN" {settings.SWARM_MANAGER_IP}:2377 || echo "Already in swarm or join failed (continuing)."
 
 echo "[7/7] Notifying app server..."
 curl -sk -X POST "{callback_url}" -H "Content-Type: application/json"
