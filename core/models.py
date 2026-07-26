@@ -196,7 +196,7 @@ class DockerNode(models.Model):
     docker_host = models.CharField(max_length=256, help_text="Docker API endpoint, e.g. https://10.0.1.5:2376")
     ssh_host = models.GenericIPAddressField(null=True, blank=True, default=None, help_text="SSH IP (defaults to public_ip)")
     ssh_port = models.PositiveIntegerField(default=22)
-    ssh_user = models.CharField(max_length=64, default="ubuntu")
+    ssh_user = models.CharField(max_length=64, default="kali")
     ssh_key = models.ForeignKey("SSHKey", on_delete=models.SET_NULL, null=True, blank=True, help_text="Pre-registered SSH key for setup")
     port_start = models.PositiveIntegerField(default=9000)
     port_end = models.PositiveIntegerField(default=9100)
