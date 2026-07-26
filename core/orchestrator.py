@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 import requests
 from django.conf import settings
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, models as db_models, transaction
 from django.utils import timezone
 
 from .models import DockerNode, PortReservation, SandboxSession
@@ -310,7 +310,7 @@ def _fail(session, container_ids, network, node=None):
     session.save(update_fields=["status"])
     if node:
         DockerNode.objects.filter(pk=node.pk).update(
-            current_sessions=models.F("current_sessions") - 1
+            current_sessions=db_models.F("current_sessions") - 1
         )
     return None
 
@@ -321,7 +321,6 @@ def _fail(session, container_ids, network, node=None):
 
 def deploy_sandbox(session):
     """Pick a node, pull images, and run the sandbox containers on it."""
-    from django.db import models as db_models
 
     lab = session.lab
     profile = lab.resource_profile
@@ -402,8 +401,6 @@ def deploy_sandbox(session):
 
 
 def stop_sandbox(session, status=SandboxSession.STOPPED):
-    from django.db import models as db_models
-
     node = session.node
     container_ids = [session.container_id, *session.service_container_ids]
     if session.service_container_id and session.service_container_id not in container_ids:
@@ -431,7 +428,6 @@ def get_sandbox_status(session):
     session.save(update_fields=["status", "stopped_at"])
     _release_ports(session)
     if session.node:
-        from django.db import models as db_models
         DockerNode.objects.filter(pk=session.node.pk).update(
             current_sessions=db_models.F("current_sessions") - 1
         )
