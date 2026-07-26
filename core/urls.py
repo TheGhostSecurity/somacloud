@@ -44,6 +44,7 @@ urlpatterns = [
     path("sandbox/<int:session_id>/status/", views.sandbox_session_status, name="sandbox_session_status"),
     path("profile/", views.student_profile, name="student_profile"),
     path("admin/nodes/", views.node_list, name="node_list"),
+    path("admin/nodes/<int:node_id>/", views.node_detail, name="node_detail"),
     path("admin/nodes/add/", views.node_add, name="node_add"),
     path("admin/nodes/<int:node_id>/setup/", views.node_setup, name="node_setup"),
     path("admin/nodes/<int:node_id>/delete/", views.node_delete, name="node_delete"),

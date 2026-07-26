@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block body_class %}bg-[#f7f7f7] text-[#1f1f1f] antialiased{% endblock %}
+{% block header %}{% endblock %}
+{% block main_class %}min-h-screen bg-[#f7f7f7]{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen flex-col">
+    {% include "partials/dashboard_header.html" %}
+    <div class="flex min-h-0 flex-1">
+        {% include "partials/dashboard_sidebar.html" %}
+        <section class="min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
+            <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="{% url 'node_list' %}" class="text-[#8c8c8c] hover:text-[#424242]">
+                        <i data-lucide="arrow-left" class="h-5 w-5"></i>
+                    </a>
+                    <div>
+                        <p class="text-sm font-semibold text-[#0067c0]">Infrastructure</p>
+                        <div class="mt-1 flex items-center gap-3">
+                            <h1 class="text-2xl font-semibold text-black">{{ node.name }}</h1>
+                            {% if node.status == "active" %}
+                                <span class="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold text-[#107c41]">Active</span>
+                            {% else %}
+                                <span class="rounded-full bg-[#fef2f2] px-3 py-1 text-xs font-semibold text-[#dc3d4f]">Offline</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a class="inline-flex items-center gap-2 rounded-md border border-[#c8c8c8] bg-white px-4 py-2 text-sm font-semibold text-[#424242] hover:bg-[#f7f7f7]" href="{% url 'node_setup' node.id %}">
+                        <i data-lucide="terminal" class="h-4 w-4"></i>Setup
+                    </a>
+                    <a class="inline-flex items-center gap-2 rounded-md border border-[#c8c8c8] bg-white px-4 py-2 text-sm font-semibold text-[#424242] hover:bg-[#f7f7f7]" href="{% url 'node_health' node.id %}">
+                        <i data-lucide="heart-pulse" class="h-4 w-4"></i>Health Check
+                    </a>
+                    <form action="{% url 'node_toggle' node.id %}" method="post" class="inline" onsubmit="return confirm('{% if node.status == "active" %}Deactivate node \'{{ node.name }}\'?{% else %}Reactivate node \'{{ node.name }}\'?{% endif %}')">
+                        {% csrf_token %}
+                        {% if node.status == "active" %}
+                            <button class="inline-flex items-center gap-2 rounded-md border border-[#fecaca] bg-[#fef2f2] px-4 py-2 text-sm font-semibold text-[#dc3d4f] hover:bg-[#fee2e2]" type="submit">
+                                <i data-lucide="power" class="h-4 w-4"></i>Deactivate
+                            </button>
+                        {% else %}
+                            <button class="inline-flex items-center gap-2 rounded-md border border-[#bbf7d0] bg-[#ecfdf3] px-4 py-2 text-sm font-semibold text-[#107c41] hover:bg-[#dcfce7]" type="submit">
+                                <i data-lucide="power" class="h-4 w-4"></i>Activate
+                            </button>
+                        {% endif %}
+                    </form>
+                    {% if node.current_sessions == 0 %}
+                        <form action="{% url 'node_delete' node.id %}" method="post" class="inline" onsubmit="return confirm('Delete node \'{{ node.name }}\'?')">
+                            {% csrf_token %}
+                            <button class="inline-flex items-center gap-2 rounded-md border border-[#fecaca] bg-[#fef2f2] px-4 py-2 text-sm font-semibold text-[#dc3d4f] hover:bg-[#fee2e2]" type="submit">
+                                <i data-lucide="trash-2" class="h-4 w-4"></i>Delete
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if messages %}
+                <div class="mb-6 space-y-2">
+                    {% for msg in messages %}
+                        <div class="rounded-lg border px-4 py-3 text-sm font-semibold
+                            {% if msg.tags == 'success' %}border-[#a7f3d0] bg-[#ecfdf3] text-[#107c41]
+                            {% elif msg.tags == 'error' %}border-[#fecaca] bg-[#fef2f2] text-[#dc3d4f]
+                            {% else %}border-[#c8c8c8] bg-[#f5f5f5] text-[#424242]{% endif %}">
+                            {{ msg }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="grid gap-6 lg:grid-cols-3">
+                <div class="space-y-4 lg:col-span-2">
+                    <section class="rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm">
+                        <h2 class="mb-4 text-sm font-semibold text-[#5c5c5c]">Node Information</h2>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <p class="text-xs text-[#8c8c8c]">Public IP</p>
+                                <p class="mt-0.5 font-mono text-sm font-semibold text-black">{{ node.public_ip }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-[#8c8c8c]">Docker API</p>
+                                <p class="mt-0.5 font-mono text-xs text-black break-all">{{ node.docker_host }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-[#8c8c8c]">Port Range</p>
+                                <p class="mt-0.5 text-sm font-semibold text-black">{{ node.port_start }} – {{ node.port_end }} ({{ node.port_end|add:"-"|add:node.port_start|add:"1" }} ports)</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-[#8c8c8c]">Last Health Check</p>
+                                {% if node.last_health_check %}
+                                    <p class="mt-0.5 text-sm font-semibold text-black">{{ node.last_health_check|timesince }} ago</p>
+                                {% else %}
+                                    <p class="mt-0.5 text-sm text-[#8c8c8c]">Never checked</p>
+                                {% endif %}
+                            </div>
+                            {% if node.docker_node_id %}
+                            <div class="sm:col-span-2">
+                                <p class="text-xs text-[#8c8c8c]">Swarm Node ID</p>
+                                <p class="mt-0.5 font-mono text-xs text-black">{{ node.docker_node_id }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </section>
+
+                    <section class="rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm">
+                        <h2 class="mb-4 text-sm font-semibold text-[#5c5c5c]">SSH Configuration</h2>
+                        <div class="grid gap-4 sm:grid-cols-3">
+                            <div>
+                                <p class="text-xs text-[#8c8c8c]">Host</p>
+                                <p class="mt-0.5 font-mono text-sm text-black">{{ node.ssh_host|default:"—" }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-[#8c8c8c]">Port</p>
+                                <p class="mt-0.5 text-sm font-semibold text-black">{{ node.ssh_port }}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-[#8c8c8c]">User</p>
+                                <p class="mt-0.5 font-mono text-sm text-black">{{ node.ssh_user }}</p>
+                            </div>
+                            <div class="sm:col-span-3">
+                                <p class="text-xs text-[#8c8c8c]">SSH Key</p>
+                                {% if node.ssh_key %}
+                                    <p class="mt-0.5 text-sm font-semibold text-black">{{ node.ssh_key.name }}</p>
+                                    <p class="mt-0.5 font-mono text-xs text-[#8c8c8c]">{{ node.ssh_key.fingerprint }}</p>
+                                {% else %}
+                                    <p class="mt-0.5 text-sm text-[#8c8c8c]">No key assigned</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </section>
+
+                    {% if sessions %}
+                    <section class="rounded-xl border border-[#e0e0e0] bg-white shadow-sm">
+                        <div class="border-b border-[#ededed] px-6 py-4">
+                            <h2 class="text-sm font-semibold text-[#5c5c5c]">Active Sessions ({{ sessions|length }})</h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="border-b border-[#ededed] bg-[#fafafa] text-[#5c5c5c]">
+                                    <tr>
+                                        <th class="px-6 py-3 font-semibold">Student</th>
+                                        <th class="px-6 py-3 font-semibold">Lab</th>
+                                        <th class="px-6 py-3 font-semibold">Started</th>
+                                        <th class="px-6 py-3 font-semibold">Expires</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#ededed]">
+                                    {% for s in sessions %}
+                                    <tr class="hover:bg-[#fafafa]">
+                                        <td class="px-6 py-3 font-semibold text-black">{{ s.user.username }}</td>
+                                        <td class="px-6 py-3 text-[#424242]">{{ s.lab.title }}</td>
+                                        <td class="px-6 py-3 text-[#5c5c5c]">{{ s.started_at|timesince }} ago</td>
+                                        <td class="px-6 py-3 text-[#5c5c5c]">{{ s.expires_at|timeuntil }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                    {% endif %}
+                </div>
+
+                <div class="space-y-4">
+                    <section class="rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm">
+                        <h2 class="mb-4 text-sm font-semibold text-[#5c5c5c]">Resources</h2>
+                        <div class="space-y-5">
+                            <div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-[#424242]">CPU</span>
+                                    <span class="font-semibold text-black">{{ node.cpu_used }} / {{ node.total_cpu }} cores</span>
+                                </div>
+                                <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[#e5e7eb]">
+                                    <div class="h-full rounded-full {% if node.cpu_percent > 80 %}bg-[#dc3d4f]{% elif node.cpu_percent > 50 %}bg-[#d99322]{% else %}bg-[#107c41]{% endif %}" style="width: {{ node.cpu_percent }}%"></div>
+                                </div>
+                                <p class="mt-1 text-xs text-[#8c8c8c]">{{ node.cpu_percent }}% used</p>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-[#424242]">RAM</span>
+                                    <span class="font-semibold text-black">{{ node.mem_used }} / {{ node.total_memory_mb }} MB</span>
+                                </div>
+                                <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[#e5e7eb]">
+                                    <div class="h-full rounded-full {% if node.mem_percent > 80 %}bg-[#dc3d4f]{% elif node.mem_percent > 50 %}bg-[#d99322]{% else %}bg-[#107c41]{% endif %}" style="width: {{ node.mem_percent }}%"></div>
+                                </div>
+                                <p class="mt-1 text-xs text-[#8c8c8c]">{{ node.mem_percent }}% used</p>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-[#424242]">Ports</span>
+                                    <span class="font-semibold text-black">{{ node.current_sessions }} / {{ node.port_end|add:"-"|add:node.port_start|add:"1" }}</span>
+                                </div>
+                                <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-[#e5e7eb]">
+                                    <div class="h-full rounded-full {% if node.capacity_percent > 80 %}bg-[#dc3d4f]{% elif node.capacity_percent > 50 %}bg-[#d99322]{% else %}bg-[#107c41]{% endif %}" style="width: {{ node.capacity_percent }}%"></div>
+                                </div>
+                                <p class="mt-1 text-xs text-[#8c8c8c]">{{ node.capacity_percent }}% used</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="rounded-xl border border-[#e0e0e0] bg-white p-6 shadow-sm">
+                        <h2 class="mb-4 text-sm font-semibold text-[#5c5c5c]">Quick Stats</h2>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-[#424242]">Active Sessions</span>
+                                <span class="text-lg font-semibold text-black">{{ node.current_sessions }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-[#424242]">Status</span>
+                                {% if node.status == "active" %}
+                                    <span class="rounded-full bg-[#ecfdf3] px-2 py-0.5 text-xs font-semibold text-[#107c41]">Active</span>
+                                {% else %}
+                                    <span class="rounded-full bg-[#fef2f2] px-2 py-0.5 text-xs font-semibold text-[#dc3d4f]">Offline</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

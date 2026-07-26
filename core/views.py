@@ -1077,6 +1077,32 @@ def node_list(request):
 
 
 @login_required
+def node_detail(request, node_id):
+    if not _is_admin(request.user):
+        messages.error(request, "Access denied.")
+        return redirect("dashboard")
+    node = get_object_or_404(DockerNode, pk=node_id)
+    used_cpu, used_mem = _node_usage(node)
+    total_cpu = float(node.total_cpu) if node.total_cpu else 0
+    total_mem = node.total_memory_mb or 0
+    node.cpu_used = used_cpu
+    node.cpu_percent = round((used_cpu / total_cpu * 100) if total_cpu > 0 else 0)
+    node.mem_used = used_mem
+    node.mem_percent = round((used_mem / total_mem * 100) if total_mem > 0 else 0)
+    sessions = SandboxSession.objects.filter(node=node, status=SandboxSession.RUNNING).select_related("user", "lab")
+    return render(
+        request,
+        "node_detail.html",
+        {
+            "active_nav": "nodes",
+            "user_role_label": get_role_label(request.user),
+            "node": node,
+            "sessions": sessions,
+        },
+    )
+
+
+@login_required
 def node_add(request):
     if not _is_admin(request.user):
         messages.error(request, "Access denied.")
