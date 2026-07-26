@@ -71,16 +71,16 @@
             {% else %}
                 <a class="hidden rounded-full px-3 py-2 text-sm font-medium text-[#173b57] hover:bg-[#eaf4ff] sm:inline-flex" href="{% url 'login' %}">Login</a>
             {% endif %}
-            <a class="rounded-full bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[#0078d4]/20 transition hover:-translate-y-0.5 hover:bg-[#005a9e]" href="{% url 'signup' %}">Sign Up</a>
+            <a class="rounded-full bg-[#0078d4] px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-[#0078d4]/20 transition hover:-translate-y-0.5 hover:bg-[#106ebe]" href="{% url 'signup' %}">Sign Up</a>
         </div>
     </nav>
 </header>
 
-<section class="relative isolate overflow-hidden bg-gradient-to-br from-white via-[#f4fbff] to-[#dff3ff]">
-    <div class="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_18%,rgba(55,165,255,0.24),transparent_30%),radial-gradient(circle_at_82%_6%,rgba(0,120,212,0.18),transparent_28%)]"></div>
-    <div class="absolute inset-0 -z-10 opacity-[0.24]" style="background-image: linear-gradient(rgba(0,120,212,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(0,120,212,.14) 1px, transparent 1px); background-size: 42px 42px;"></div>
+<section class="relative isolate overflow-hidden bg-gradient-to-br from-white via-[#f7fcff] to-[#e6f4ff]">
+    <div class="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_18%,rgba(0,120,212,0.14),transparent_30%),radial-gradient(circle_at_82%_6%,rgba(80,229,255,0.22),transparent_30%)]"></div>
+    <div class="absolute inset-0 -z-10 opacity-[0.18]" style="background-image: linear-gradient(rgba(0,120,212,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(0,120,212,.10) 1px, transparent 1px); background-size: 42px 42px;"></div>
 
-    <div class="mx-auto grid min-h-[610px] max-w-screen-2xl items-center gap-10 px-5 py-14 lg:grid-cols-[0.92fr_1.08fr] lg:px-12">
+    <div class="mx-auto grid min-h-[630px] max-w-screen-2xl items-center gap-8 px-5 py-14 lg:grid-cols-[0.7fr_1.3fr] lg:px-12">
         <div class="relative z-10 max-w-3xl">
             <p class="inline-flex items-center gap-2 rounded-full border border-[#b7d8ff] bg-white/75 px-4 py-2 text-sm font-semibold text-[#005a9e] shadow-sm backdrop-blur">
                 <i data-lucide="shield-check" class="h-4 w-4"></i>
@@ -94,9 +94,9 @@
             </p>
             <div class="mt-8 flex flex-wrap items-center gap-3">
                 {% if user.is_authenticated %}
-                    <a class="rounded-full bg-[#0067c0] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0078d4]/20 transition hover:-translate-y-0.5 hover:bg-[#005a9e]" href="{% url 'dashboard' %}">Start Learning</a>
+                    <a class="rounded-full bg-[#0078d4] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0078d4]/20 transition hover:-translate-y-0.5 hover:bg-[#106ebe]" href="{% url 'dashboard' %}">Start Learning</a>
                 {% else %}
-                    <a class="rounded-full bg-[#0067c0] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0078d4]/20 transition hover:-translate-y-0.5 hover:bg-[#005a9e]" href="{% url 'signup' %}">Start Learning</a>
+                    <a class="rounded-full bg-[#0078d4] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0078d4]/20 transition hover:-translate-y-0.5 hover:bg-[#106ebe]" href="{% url 'signup' %}">Start Learning</a>
                 {% endif %}
                 <a class="rounded-full border border-[#b7d8ff] bg-white/75 px-6 py-3 text-sm font-semibold text-[#005a9e] backdrop-blur transition hover:-translate-y-0.5 hover:bg-white" href="#platform" data-open-tab="labs">Explore Cyber Labs</a>
                 <a class="rounded-full border border-[#b7d8ff] bg-white/45 px-6 py-3 text-sm font-semibold text-[#005a9e] transition hover:-translate-y-0.5 hover:bg-white" href="#platform" data-open-tab="institutions">For Institutions</a>
@@ -121,93 +121,18 @@
             </div>
         </div>
 
-        <div class="soma-float relative">
-            <div class="absolute -left-5 top-8 hidden rounded-2xl border border-[#d7e5f4] bg-white/85 p-4 text-[#061526] shadow-2xl shadow-[#0078d4]/10 backdrop-blur md:block">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#005a9e]">Active VMs</p>
-                <p class="mt-2 text-3xl font-semibold">128</p>
+        <figure class="relative lg:scale-[1.06] lg:origin-center">
+            <div class="overflow-hidden rounded-[2rem] border border-white/80 bg-white/85 p-2 shadow-2xl shadow-[#0078d4]/25 backdrop-blur-xl">
+                <img
+                    class="w-full rounded-[1.5rem] border border-[#c9e5f8] object-cover"
+                    src="{% static 'images/student-lab-workspace.png' %}"
+                    alt="SomaCloud student lab workspace showing guided instructions alongside a browser terminal"
+                    width="1361"
+                    height="535"
+                >
             </div>
-            <div class="absolute -right-2 bottom-8 hidden rounded-2xl border border-[#d7e5f4] bg-white/85 p-4 text-[#061526] shadow-2xl shadow-[#0078d4]/10 backdrop-blur sm:block">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-[#005a9e]">Threat Score</p>
-                <div class="mt-3 h-2 w-36 rounded-full bg-[#d7e5f4]">
-                    <div class="h-2 w-[72%] rounded-full bg-[#37a5ff]"></div>
-                </div>
-            </div>
-
-            <div class="overflow-hidden rounded-[2rem] border border-white/80 bg-white/70 p-3 shadow-2xl shadow-[#0078d4]/20 backdrop-blur-xl">
-                <div class="overflow-hidden rounded-[1.5rem] border border-[#d7e5f4] bg-white text-[#061526]">
-                    <div class="flex items-center justify-between border-b border-[#e5eef7] px-5 py-4">
-                        <div class="flex items-center gap-2">
-                            <span class="h-3 w-3 rounded-full bg-[#ef4444]"></span>
-                            <span class="h-3 w-3 rounded-full bg-[#f59e0b]"></span>
-                            <span class="h-3 w-3 rounded-full bg-[#22c55e]"></span>
-                        </div>
-                        <div class="hidden h-8 w-72 items-center rounded-full border border-[#d7e5f4] bg-[#f6faff] px-3 text-xs text-[#64748b] md:flex">
-                            <i data-lucide="search" class="mr-2 h-4 w-4"></i>
-                            Search labs, VMs, evidence
-                        </div>
-                    </div>
-                    <div class="grid min-h-[360px] lg:grid-cols-[168px_1fr]">
-                        <aside class="hidden border-r border-[#e5eef7] bg-[#f6faff] p-4 lg:block">
-                            <div class="mb-5 flex items-center gap-2">
-                                <span class="grid h-9 w-9 place-items-center rounded-xl bg-[#0078d4] text-white">
-                                    <i data-lucide="server" class="h-5 w-5"></i>
-                                </span>
-                                <span class="text-sm font-semibold">Range OS</span>
-                            </div>
-                            <div class="space-y-2 text-xs text-[#64748b]">
-                                <div class="rounded-lg bg-[#eaf4ff] px-3 py-2 font-semibold text-[#005a9e]">Cyber Labs</div>
-                                <div class="rounded-lg px-3 py-2">Virtual Machines</div>
-                                <div class="rounded-lg px-3 py-2">Evidence</div>
-                                <div class="rounded-lg px-3 py-2">Submissions</div>
-                            </div>
-                        </aside>
-                        <div class="p-4">
-                            <div class="mb-4 grid gap-3 sm:grid-cols-3">
-                                <div class="rounded-2xl border border-[#d7e5f4] bg-[#f8fbff] p-4 shadow-sm">
-                                    <i data-lucide="terminal" class="h-5 w-5 text-[#37a5ff]"></i>
-                                    <p class="mt-5 text-sm font-semibold">Kali Lab</p>
-                                    <p class="mt-1 text-xs text-[#64748b]">Running</p>
-                                </div>
-                                <div class="rounded-2xl border border-[#d7e5f4] bg-[#f8fbff] p-4 shadow-sm">
-                                    <i data-lucide="radar" class="h-5 w-5 text-[#37a5ff]"></i>
-                                    <p class="mt-5 text-sm font-semibold">SOC Monitor</p>
-                                    <p class="mt-1 text-xs text-[#64748b]">42 alerts</p>
-                                </div>
-                                <div class="rounded-2xl border border-[#d7e5f4] bg-[#f8fbff] p-4 shadow-sm">
-                                    <i data-lucide="hard-drive" class="h-5 w-5 text-[#37a5ff]"></i>
-                                    <p class="mt-5 text-sm font-semibold">Evidence Store</p>
-                                    <p class="mt-1 text-xs text-[#64748b]">Encrypted</p>
-                                </div>
-                            </div>
-                            <div class="overflow-hidden rounded-2xl border border-[#d7e5f4] bg-[#f8fbff] p-5 shadow-sm">
-                                <div class="mb-5 flex items-center justify-between">
-                                    <div>
-                                        <p class="text-sm font-semibold">Security operations dashboard</p>
-                                        <p class="text-xs text-[#64748b]">Student cohort threat analysis</p>
-                                    </div>
-                                    <span class="rounded-full bg-[#0f5132] px-3 py-1 text-xs font-semibold text-[#bbf7d0]">Live</span>
-                                </div>
-                                <div class="space-y-3">
-                                    <div class="h-3 w-[86%] rounded-full bg-[#37a5ff]"></div>
-                                    <div class="h-3 w-[62%] rounded-full bg-[#d7e5f4]"></div>
-                                    <div class="h-3 w-[74%] rounded-full bg-[#d7e5f4]"></div>
-                                    <div class="mt-6 grid grid-cols-8 items-end gap-2">
-                                        <span class="h-12 rounded-t bg-[#0078d4]"></span>
-                                        <span class="h-20 rounded-t bg-[#37a5ff]"></span>
-                                        <span class="h-10 rounded-t bg-[#0078d4]"></span>
-                                        <span class="h-24 rounded-t bg-[#37a5ff]"></span>
-                                        <span class="h-16 rounded-t bg-[#0078d4]"></span>
-                                        <span class="h-28 rounded-t bg-[#37a5ff]"></span>
-                                        <span class="h-12 rounded-t bg-[#0078d4]"></span>
-                                        <span class="h-20 rounded-t bg-[#37a5ff]"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            <figcaption class="sr-only">Students follow guided exercises and work directly in a live browser terminal.</figcaption>
+        </figure>
     </div>
 </section>
 
@@ -331,13 +256,30 @@
                             </div>
                             <div class="flex flex-wrap gap-3">
                                 <a class="rounded-full bg-[#37a5ff] px-6 py-3 text-sm font-semibold text-[#061526] transition hover:-translate-y-0.5 hover:bg-white" href="{% url 'signup' %}">Join SomaCloud</a>
-                                <a class="rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/15" href="{% url 'login' %}">Create a Lab</a>
-                                <a class="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10" href="mailto:support@somacloud.local">Contact Us</a>
+                                <a class="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/10" href="#contact">Contact Us</a>
                             </div>
                         </div>
                     </div>
                 </div>
             </article>
+        </div>
+    </div>
+</section>
+
+<section id="contact" class="border-t border-[#d7e5f4] bg-white px-5 py-14 lg:px-8">
+    <div class="mx-auto max-w-7xl rounded-[2rem] bg-[#f4f9fd] p-8 md:p-10">
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#0078d4]">Contact</p>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-[#061526]">Talk to SomaCloud</h2>
+        <div class="mt-7 grid gap-4 md:grid-cols-3">
+            <a class="flex items-center gap-3 rounded-2xl border border-[#cfe6f7] bg-white p-4 text-[#173b57] transition hover:border-[#0078d4] hover:shadow-sm" href="https://wa.me/255745001110" target="_blank" rel="noopener">
+                <i data-lucide="message-circle" class="h-5 w-5 text-[#0078d4]"></i><span><span class="block text-xs font-semibold uppercase tracking-wide text-[#64748b]">WhatsApp</span><span class="font-semibold">+255 745 001 110</span></span>
+            </a>
+            <a class="flex items-center gap-3 rounded-2xl border border-[#cfe6f7] bg-white p-4 text-[#173b57] transition hover:border-[#0078d4] hover:shadow-sm" href="https://instagram.com/theghostsecurity" target="_blank" rel="noopener">
+                <i data-lucide="instagram" class="h-5 w-5 text-[#0078d4]"></i><span><span class="block text-xs font-semibold uppercase tracking-wide text-[#64748b]">Instagram</span><span class="font-semibold">@theghostsecurity</span></span>
+            </a>
+            <a class="flex items-center gap-3 rounded-2xl border border-[#cfe6f7] bg-white p-4 text-[#173b57] transition hover:border-[#0078d4] hover:shadow-sm" href="tel:+255745001110">
+                <i data-lucide="phone" class="h-5 w-5 text-[#0078d4]"></i><span><span class="block text-xs font-semibold uppercase tracking-wide text-[#64748b]">Call</span><span class="font-semibold">+255 745 001 110</span></span>
+            </a>
         </div>
     </div>
 </section>
