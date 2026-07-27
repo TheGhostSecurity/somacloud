@@ -132,13 +132,13 @@ def render_markdown(raw):
             continue
         if stripped.startswith("### "):
             flush_list()
-            html_parts.append(format_html("<h4 class='mt-4 font-semibold text-black'>{}</h4>", inline_format(stripped[4:])))
+            html_parts.append(format_html("<h4 class='mt-4 font-semibold text-[#9be62f]'>{}</h4>", inline_format(stripped[4:])))
         elif stripped.startswith("## "):
             flush_list()
-            html_parts.append(format_html("<h3 class='mt-4 text-lg font-semibold text-black'>{}</h3>", inline_format(stripped[3:])))
+            html_parts.append(format_html("<h3 class='mt-4 text-lg font-semibold text-[#9be62f]'>{}</h3>", inline_format(stripped[3:])))
         elif stripped.startswith("# "):
             flush_list()
-            html_parts.append(format_html("<h2 class='text-xl font-semibold text-black'>{}</h2>", inline_format(stripped[2:])))
+            html_parts.append(format_html("<h2 class='text-xl font-semibold text-[#9be62f]'>{}</h2>", inline_format(stripped[2:])))
         elif stripped.startswith("- "):
             list_items.append(inline_format(stripped[2:]))
         else:
