@@ -34,7 +34,7 @@
 
     <main class="grid min-h-0 flex-1 lg:grid-cols-[minmax(360px,43%)_1fr]">
         <aside class="min-h-0 overflow-y-auto border-b border-[#26334a] bg-[#131f34] lg:border-b-0 lg:border-r">
-            <div class="space-y-5 p-4 md:p-6">
+            <div class="space-y-4 p-4 pb-2 md:p-5 md:pb-2">
                 <section>
                     <div class="flex items-center justify-between gap-3">
                         <span class="text-xs font-semibold uppercase tracking-[0.18em] text-[#7db7ff]">Lab guide</span>
@@ -61,7 +61,7 @@
                 {% if sandbox_notes %}
                     <section class="rounded-lg border border-[#2b3c58] bg-[#17253c] p-4">
                         <div class="flex items-center gap-2 text-sm font-semibold text-white"><i data-lucide="list-checks" class="h-4 w-4 text-[#9be62f]"></i>Instructions</div>
-                        <div class="prose prose-invert prose-sm mt-3 max-w-none leading-6 text-[#c4cede] prose-headings:text-white prose-a:text-[#8fc8ff] prose-code:text-[#d7eeff]">{{ sandbox_notes|safe }}</div>
+                        <div class="prose prose-invert prose-sm mt-3 max-w-none leading-6 text-[#c4cede] prose-headings:text-[#9be62f] prose-a:text-[#8fc8ff] prose-code:text-[#d7eeff]">{{ sandbox_notes|safe }}</div>
                     </section>
                 {% endif %}
 
