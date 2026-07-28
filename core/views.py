@@ -385,11 +385,11 @@ def user_dashboard(request):
     # 5. Sessions per lab (top 6 labs by session count)
     lab_sessions = (
         SandboxSession.objects.filter(user=request.user)
-        .values(lab_title="lab__title")
+        .values("lab__title")
         .annotate(count=Count("id"))
         .order_by("-count")[:6]
     )
-    lab_session_labels = [l["lab_title"][:20] for l in lab_sessions]
+    lab_session_labels = [l["lab__title"][:20] for l in lab_sessions]
     lab_session_data = [l["count"] for l in lab_sessions]
 
     # 6. Hourly activity heatmap (sessions by hour)
@@ -1955,13 +1955,13 @@ def student_analytics_pdf(request, user_id):
     # Chart 4: Sessions per lab (horizontal bar)
     lab_ses = (
         SandboxSession.objects.filter(user=student)
-        .values(lab_title="lab__title")
+        .values("lab__title")
         .annotate(count=Count("id"))
         .order_by("-count")[:8]
     )
     if lab_ses:
         fig, ax = plt.subplots(figsize=(6, 3))
-        labels = [l["lab_title"][:25] for l in reversed(list(lab_ses))]
+        labels = [l["lab__title"][:25] for l in reversed(list(lab_ses))]
         vals = [l["count"] for l in reversed(list(lab_ses))]
         ax.barh(labels, vals, color="#0067c0", edgecolor="white", height=0.6)
         ax.set_xlabel("Sessions", fontsize=9)
