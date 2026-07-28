@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block body_class %}bg-white text-[#1f1f1f] antialiased{% endblock %}
+{% block header %}{% endblock %}
+{% block main_class %}min-h-screen bg-white{% endblock %}
+
+{% block content %}
+<div class="flex flex-1 flex-col">
+    {% include "partials/dashboard_header.html" %}
+    <div class="flex min-h-0 flex-1">
+        {% include "partials/dashboard_sidebar.html" %}
+
+        <section class="min-w-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 lg:px-8">
+            <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <p class="text-sm font-semibold text-[#0067c0]">My Analytics</p>
+                    <h1 class="mt-1 text-2xl font-semibold text-black">Progress Analysis</h1>
+                </div>
+            </div>
+
+            <!-- Summary stat cards -->
+            <div class="mb-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-[#eaf4ff] text-[#0067c0]"><i data-lucide="target" class="h-5 w-5"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#5c5c5c]">Overall Progress</p>
+                            <p class="text-lg font-semibold text-black">{{ overall_percent }}%</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-[#ecfdf3] text-[#107c41]"><i data-lucide="check-circle" class="h-5 w-5"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#5c5c5c]">Completed</p>
+                            <p class="text-lg font-semibold text-black">{{ completed_labs }}/{{ enrolled_labs_count }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-[#fff7ed] text-[#c43e1c]"><i data-lucide="target" class="h-5 w-5"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#5c5c5c]">Challenge Accuracy</p>
+                            <p class="text-lg font-semibold text-black">{{ challenge_accuracy }}%</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-[#ede7f6] text-[#4527a0]"><i data-lucide="server" class="h-5 w-5"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#5c5c5c]">Total Sessions</p>
+                            <p class="text-lg font-semibold text-black">{{ total_sessions_count }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-[#fce7f3] text-[#be185d]"><i data-lucide="log-in" class="h-5 w-5"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#5c5c5c]">Total Logins</p>
+                            <p class="text-lg font-semibold text-black">{{ total_login_count }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts grid -->
+            <div class="grid gap-5 lg:grid-cols-2">
+                <!-- Session Activity (Line) -->
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <h3 class="mb-3 text-sm font-semibold text-[#424242]">Session Activity (30 days)</h3>
+                    <div class="relative" style="height:240px"><canvas id="chartSession"></canvas></div>
+                </div>
+                <!-- Labs by Phase (Doughnut) -->
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <h3 class="mb-3 text-sm font-semibold text-[#424242]">Labs by Phase</h3>
+                    <div class="relative mx-auto" style="height:240px;max-width:300px"><canvas id="chartPhase"></canvas></div>
+                </div>
+                <!-- Flag Success (Doughnut) -->
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <h3 class="mb-3 text-sm font-semibold text-[#424242]">Challenge Accuracy</h3>
+                    <div class="relative mx-auto" style="height:240px;max-width:300px"><canvas id="chartFlags"></canvas></div>
+                </div>
+                <!-- Login by Day of Week (Bar) -->
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <h3 class="mb-3 text-sm font-semibold text-[#424242]">Logins by Day of Week</h3>
+                    <div class="relative" style="height:240px"><canvas id="chartLogin"></canvas></div>
+                </div>
+                <!-- Sessions per Lab (Horizontal Bar) -->
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <h3 class="mb-3 text-sm font-semibold text-[#424242]">Most Used Labs</h3>
+                    <div class="relative" style="height:240px"><canvas id="chartLabUse"></canvas></div>
+                </div>
+                <!-- Hourly Activity (Bar) -->
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                    <h3 class="mb-3 text-sm font-semibold text-[#424242]">Activity by Hour of Day</h3>
+                    <div class="relative" style="height:240px"><canvas id="chartHourly"></canvas></div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    var D = {{ chart_data_json|safe }};
+    var blue = '#0067c0', green = '#107c41', amber = '#d99322', red = '#dc2626', purple = '#7c3aed', slate = '#64748b';
+    var blueBg = blue + '22';
+
+    var chartOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+            y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, stepSize: 1 }, beginAtZero: true }
+        }
+    };
+
+    var doughnutOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } }
+    };
+
+    if (D.session_chart.data.length) {
+        new Chart(document.getElementById('chartSession'), {
+            type: 'line',
+            data: {
+                labels: D.session_chart.labels,
+                datasets: [{
+                    data: D.session_chart.data,
+                    borderColor: blue, backgroundColor: blueBg,
+                    fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: blue, borderWidth: 2
+                }]
+            },
+            options: chartOpts
+        });
+    }
+
+    if (D.phase_chart.data.length) {
+        var phaseColors = ['#0067c0', '#107c41', '#d99322', '#dc2626', '#7c3aed', '#0891b2', '#e11d48'];
+        new Chart(document.getElementById('chartPhase'), {
+            type: 'doughnut',
+            data: {
+                labels: D.phase_chart.labels,
+                datasets: [{ data: D.phase_chart.data, backgroundColor: phaseColors.slice(0, D.phase_chart.data.length), borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: doughnutOpts
+        });
+    }
+
+    new Chart(document.getElementById('chartFlags'), {
+        type: 'doughnut',
+        data: {
+            labels: D.flag_chart.labels,
+            datasets: [{ data: D.flag_chart.data, backgroundColor: [green, red], borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: doughnutOpts
+    });
+
+    if (D.login_chart.data.length) {
+        new Chart(document.getElementById('chartLogin'), {
+            type: 'bar',
+            data: {
+                labels: D.login_chart.labels,
+                datasets: [{ data: D.login_chart.data, backgroundColor: blue, borderRadius: 6, barThickness: 28 }]
+            },
+            options: chartOpts
+        });
+    }
+
+    if (D.lab_session_chart.data.length) {
+        new Chart(document.getElementById('chartLabUse'), {
+            type: 'bar',
+            data: {
+                labels: D.lab_session_chart.labels,
+                datasets: [{ data: D.lab_session_chart.data, backgroundColor: [blue, green, amber, purple, slate, red], borderRadius: 6 }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, stepSize: 1 }, beginAtZero: true },
+                    y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    if (D.hourly_chart.data.length) {
+        new Chart(document.getElementById('chartHourly'), {
+            type: 'bar',
+            data: {
+                labels: D.hourly_chart.labels,
+                datasets: [{ data: D.hourly_chart.data, backgroundColor: purple + 'cc', borderRadius: 4 }]
+            },
+            options: chartOpts
+        });
+    }
+})();
+</script>
+{% endblock %}

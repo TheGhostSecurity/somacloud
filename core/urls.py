@@ -32,6 +32,7 @@ urlpatterns = [
     path("instructor/labs/<int:lab_id>/toggle/", views.instructor_lab_toggle, name="instructor_lab_toggle"),
     path("instructor/labs/<int:lab_id>/delete/", views.instructor_lab_delete, name="instructor_lab_delete"),
     path("user-dashboard/", views.user_dashboard, name="user_dashboard"),
+    path("my-analytics/", views.student_analytics_view, name="student_analytics_view"),
     path("student/activity/", views.student_recent_activity, name="student_recent_activity"),
     path("student/profile-image/", views.update_student_profile_image, name="update_student_profile_image"),
     path("labs/", views.student_labs, name="student_labs"),

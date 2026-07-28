@@ -334,92 +334,21 @@ def user_dashboard(request):
 
     phases = HackPhase.objects.order_by("order", "name")
 
-    # --- Rich analytics data for Chart.js ---
+    # --- Extra stats for dashboard cards ---
 
-    # 1. Session activity by day (last 30 days)
-    thirty_days_ago = now - timezone.timedelta(days=30)
-    daily_sessions = (
-        SandboxSession.objects.filter(user=request.user, started_at__gte=thirty_days_ago)
-        .annotate(day=TruncDay("started_at"))
-        .values("day")
-        .annotate(count=Count("id"))
-        .order_by("day")
-    )
-    session_chart_labels = [d["day"].strftime("%b %d") for d in daily_sessions]
-    session_chart_data = [d["count"] for d in daily_sessions]
-
-    # 2. Labs by phase (doughnut)
-    phase_counts = (
-        LabEnrollment.objects.filter(user=request.user, is_active=True)
-        .values("lab__hack_phase__name")
-        .annotate(count=Count("id"))
-        .order_by("lab__hack_phase__name")
-    )
-    phase_labels = [p["lab__hack_phase__name"] or "Unknown" for p in phase_counts]
-    phase_data = [p["count"] for p in phase_counts]
-
-    # 3. Flag submission success rate (doughnut)
     total_flags = FlagSubmission.objects.filter(user=request.user).count()
     correct_flags = FlagSubmission.objects.filter(user=request.user, is_correct=True).count()
-    wrong_flags = total_flags - correct_flags
 
-    # 4. Login frequency by day of week (last 30 days)
-    login_by_day = (
-        LoginLog.objects.filter(user=request.user, logged_in_at__gte=thirty_days_ago, success=True)
-        .values("logged_in_at__week_day")
-        .annotate(count=Count("id"))
-        .order_by("logged_in_at__week_day")
-    )
-    # Django week_day: 1=Sunday, 2=Monday, ... 7=Saturday
-    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    login_chart_data = [0] * 7
-    for row in login_by_day:
-        django_dow = row["logged_in_at__week_day"]  # 1=Sun, 2=Mon, ..., 7=Sat
-        idx = (django_dow - 2) % 7  # Convert to 0=Mon, ..., 6=Sun
-        login_chart_data[idx] = row["count"]
-    login_chart_labels = day_names
-
-    # 5. Sessions per lab (top 6 labs by session count)
-    lab_sessions = (
-        SandboxSession.objects.filter(user=request.user)
-        .values("lab__title")
-        .annotate(count=Count("id"))
-        .order_by("-count")[:6]
-    )
-    lab_session_labels = [l["lab__title"][:20] for l in lab_sessions]
-    lab_session_data = [l["count"] for l in lab_sessions]
-
-    # 6. Hourly activity heatmap (sessions by hour)
-    hourly_activity = (
-        SandboxSession.objects.filter(user=request.user, started_at__gte=thirty_days_ago)
-        .annotate(hour=TruncHour("started_at"))
-        .values("hour")
-        .annotate(count=Count("id"))
-        .order_by("hour")
-    )
-    hourly_labels = [h["hour"].strftime("%H:00") for h in hourly_activity]
-    hourly_data = [h["count"] for h in hourly_activity]
-
-    # 7. Total time in sandboxes (minutes)
+    # Total time in sandboxes (minutes)
     total_sandbox_time = 0
     for ses in SandboxSession.objects.filter(user=request.user, stopped_at__isnull=False):
         delta = ses.stopped_at - ses.started_at
         total_sandbox_time += int(delta.total_seconds() / 60)
 
-    # 8. Average session duration (minutes)
-    avg_session_duration = round(total_sandbox_time / max(1, SandboxSession.objects.filter(user=request.user, stopped_at__isnull=False).count()))
-
-    # 9. Challenge accuracy %
+    # Average session duration (minutes)
+    stopped_count = SandboxSession.objects.filter(user=request.user, stopped_at__isnull=False).count()
+    avg_session_duration = round(total_sandbox_time / max(1, stopped_count))
     challenge_accuracy = round((correct_flags / max(1, total_flags)) * 100)
-
-    chart_data = {
-        "session_chart": {"labels": session_chart_labels, "data": session_chart_data},
-        "phase_chart": {"labels": phase_labels, "data": phase_data},
-        "flag_chart": {"labels": ["Correct", "Incorrect"], "data": [correct_flags, wrong_flags]},
-        "login_chart": {"labels": login_chart_labels, "data": login_chart_data},
-        "lab_session_chart": {"labels": lab_session_labels, "data": lab_session_data},
-        "hourly_chart": {"labels": hourly_labels, "data": hourly_data},
-    }
 
     return render(
         request,
@@ -444,11 +373,8 @@ def user_dashboard(request):
             "next_lab": next_lab_obj,
             "next_lab_progress": next_lab_progress,
             "now": now,
-            "chart_data_json": json.dumps(chart_data),
-            "total_sessions_count": SandboxSession.objects.filter(user=request.user).count(),
             "total_flags_count": total_flags,
             "correct_flags_count": correct_flags,
-            "total_login_count": LoginLog.objects.filter(user=request.user, success=True).count(),
             "total_sandbox_minutes": total_sandbox_time,
             "avg_session_duration": avg_session_duration,
             "challenge_accuracy": challenge_accuracy,
@@ -492,6 +418,123 @@ def student_recent_activity(request):
             "active_nav": "activity",
             "user_role_label": "Student",
             "actions": actions,
+        },
+    )
+
+
+@login_required
+def student_analytics_view(request):
+    now = timezone.now()
+    user = request.user
+    thirty_days_ago = now - timezone.timedelta(days=30)
+
+    # Session activity by day (last 30 days)
+    daily_sessions = (
+        SandboxSession.objects.filter(user=user, started_at__gte=thirty_days_ago)
+        .annotate(day=TruncDay("started_at"))
+        .values("day")
+        .annotate(count=Count("id"))
+        .order_by("day")
+    )
+    session_chart_labels = [d["day"].strftime("%b %d") for d in daily_sessions]
+    session_chart_data = [d["count"] for d in daily_sessions]
+
+    # Labs by phase (doughnut)
+    phase_counts = (
+        LabEnrollment.objects.filter(user=user, is_active=True)
+        .values("lab__hack_phase__name")
+        .annotate(count=Count("id"))
+        .order_by("lab__hack_phase__name")
+    )
+    phase_labels = [p["lab__hack_phase__name"] or "Unknown" for p in phase_counts]
+    phase_data = [p["count"] for p in phase_counts]
+
+    # Flag submission success rate (doughnut)
+    total_flags = FlagSubmission.objects.filter(user=user).count()
+    correct_flags = FlagSubmission.objects.filter(user=user, is_correct=True).count()
+    wrong_flags = total_flags - correct_flags
+
+    # Login frequency by day of week (last 30 days)
+    login_by_day = (
+        LoginLog.objects.filter(user=user, logged_in_at__gte=thirty_days_ago, success=True)
+        .values("logged_in_at__week_day")
+        .annotate(count=Count("id"))
+        .order_by("logged_in_at__week_day")
+    )
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    login_chart_data = [0] * 7
+    for row in login_by_day:
+        django_dow = row["logged_in_at__week_day"]
+        idx = (django_dow - 2) % 7
+        login_chart_data[idx] = row["count"]
+    login_chart_labels = day_names
+
+    # Sessions per lab (top 6)
+    lab_sessions = (
+        SandboxSession.objects.filter(user=user)
+        .values("lab__title")
+        .annotate(count=Count("id"))
+        .order_by("-count")[:6]
+    )
+    lab_session_labels = [l["lab__title"][:20] for l in lab_sessions]
+    lab_session_data = [l["count"] for l in lab_sessions]
+
+    # Hourly activity
+    hourly_activity = (
+        SandboxSession.objects.filter(user=user, started_at__gte=thirty_days_ago)
+        .annotate(hour=TruncHour("started_at"))
+        .values("hour")
+        .annotate(count=Count("id"))
+        .order_by("hour")
+    )
+    hourly_labels = [h["hour"].strftime("%H:00") for h in hourly_activity]
+    hourly_data = [h["count"] for h in hourly_activity]
+
+    # Stats
+    total_sessions = SandboxSession.objects.filter(user=user).count()
+    total_sandbox_time = 0
+    for ses in SandboxSession.objects.filter(user=user, stopped_at__isnull=False):
+        delta = ses.stopped_at - ses.started_at
+        total_sandbox_time += int(delta.total_seconds() / 60)
+    avg_session_duration = round(total_sandbox_time / max(1, SandboxSession.objects.filter(user=user, stopped_at__isnull=False).count()))
+    challenge_accuracy = round((correct_flags / max(1, total_flags)) * 100)
+    total_login_count = LoginLog.objects.filter(user=user, success=True).count()
+
+    enrolled = enrolled_labs_for(user)
+    completed_count = 0
+    for e in enrolled:
+        p = lab_progress_for(user, e.lab)
+        if p["is_complete"]:
+            completed_count += 1
+    enrolled_count = enrolled.count()
+    overall_percent = round((completed_count / max(1, enrolled_count)) * 100)
+
+    chart_data = {
+        "session_chart": {"labels": session_chart_labels, "data": session_chart_data},
+        "phase_chart": {"labels": phase_labels, "data": phase_data},
+        "flag_chart": {"labels": ["Correct", "Incorrect"], "data": [correct_flags, wrong_flags]},
+        "login_chart": {"labels": login_chart_labels, "data": login_chart_data},
+        "lab_session_chart": {"labels": lab_session_labels, "data": lab_session_data},
+        "hourly_chart": {"labels": hourly_labels, "data": hourly_data},
+    }
+
+    return render(
+        request,
+        "student_analytics.html",
+        {
+            "active_nav": "my-analytics",
+            "user_role_label": "Student",
+            "chart_data_json": json.dumps(chart_data),
+            "total_sessions_count": total_sessions,
+            "total_flags_count": total_flags,
+            "correct_flags_count": correct_flags,
+            "total_login_count": total_login_count,
+            "total_sandbox_minutes": total_sandbox_time,
+            "avg_session_duration": avg_session_duration,
+            "challenge_accuracy": challenge_accuracy,
+            "overall_percent": overall_percent,
+            "completed_labs": completed_count,
+            "enrolled_labs_count": enrolled_count,
         },
     )
 
