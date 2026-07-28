@@ -31,8 +31,8 @@
                                 {% for s in students %}
                                 <tr class="hover:bg-[#fafafa]">
                                     <td class="px-6 py-4 font-semibold text-black">{{ s.username }}</td>
-                                    <td class="px-6 py-4 text-[#424242]">{{ s.get_full_name|default:"—" }}</td>
-                                    <td class="px-6 py-4 text-[#424242]">{{ s.email|default:"—" }}</td>
+                                    <td class="px-6 py-4 text-[#424242]">{{ s.get_full_name|default:"&mdash;" }}</td>
+                                    <td class="px-6 py-4 text-[#424242]">{{ s.email|default:"&mdash;" }}</td>
                                     <td class="px-6 py-4">
                                         <a class="rounded-md bg-[#0067c0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#005a9e]" href="{% url 'instructor_student_analytics_detail' s.id %}">View Analytics</a>
                                     </td>
@@ -57,7 +57,9 @@
                 </div>
                 <div class="flex gap-2">
                     <a class="rounded-md border border-[#c8c8c8] bg-white px-3 py-2 text-xs font-semibold text-[#424242] hover:bg-[#f7f7f7]" href="{% url 'instructor_student_analytics' %}">&larr; All Students</a>
-                    <a class="rounded-md bg-[#0067c0] px-3 py-2 text-xs font-semibold text-white hover:bg-[#005a9e]" href="{% url 'instructor_student_analytics' %}">All Students</a>
+                    <a class="inline-flex items-center gap-1.5 rounded-md bg-[#107c41] px-3 py-2 text-xs font-semibold text-white hover:bg-[#0d6b35]" href="{% url 'student_analytics_pdf' student.id %}" target="_blank">
+                        <i data-lucide="download" class="h-3.5 w-3.5"></i> Download PDF
+                    </a>
                 </div>
             </div>
 
@@ -86,14 +88,92 @@
 
             <div class="mb-6 border-b border-[#e0e0e0]">
                 <nav class="flex gap-6 text-sm" id="analytics-tabs">
-                    <button class="analytics-tab border-b-2 border-[#0067c0] pb-3 font-semibold text-[#0067c0]" data-tab="timeline">Activity Timeline</button>
+                    <button class="analytics-tab border-b-2 border-[#0067c0] pb-3 font-semibold text-[#0067c0]" data-tab="labs-status">Labs Status</button>
+                    <button class="analytics-tab border-b-2 border-transparent pb-3 font-semibold text-[#5c5c5c] hover:text-[#0067c0]" data-tab="timeline">Activity Timeline</button>
                     <button class="analytics-tab border-b-2 border-transparent pb-3 font-semibold text-[#5c5c5c] hover:text-[#0067c0]" data-tab="sessions">Sessions</button>
                     <button class="analytics-tab border-b-2 border-transparent pb-3 font-semibold text-[#5c5c5c] hover:text-[#0067c0]" data-tab="submissions">Flag Submissions</button>
                     <button class="analytics-tab border-b-2 border-transparent pb-3 font-semibold text-[#5c5c5c] hover:text-[#0067c0]" data-tab="graphs">Graphs &amp; Analysis</button>
                 </nav>
             </div>
 
-            <div id="tab-timeline" class="analytics-panel">
+            <!-- Labs Status Tab -->
+            <div id="tab-labs-status" class="analytics-panel">
+                <section class="rounded-xl border border-[#e0e0e0] bg-white shadow-sm">
+                    <div class="border-b border-[#e0e0e0] px-5 py-4">
+                        <h2 class="font-semibold text-black">Lab Enrollment &amp; Progress</h2>
+                        <p class="mt-1 text-xs text-[#5c5c5c]">Enrolled, in-progress, and completed labs for {{ student.username }}</p>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[800px] text-left text-sm">
+                            <thead class="border-b border-[#ededed] text-[#424242]">
+                                <tr>
+                                    <th class="px-5 py-3 font-semibold">Lab</th>
+                                    <th class="px-5 py-3 font-semibold">Phase</th>
+                                    <th class="px-5 py-3 font-semibold">Resource</th>
+                                    <th class="px-5 py-3 font-semibold">Progress</th>
+                                    <th class="px-5 py-3 font-semibold">Sessions</th>
+                                    <th class="px-5 py-3 font-semibold">Flags</th>
+                                    <th class="px-5 py-3 font-semibold">Status</th>
+                                    <th class="px-5 py-3 font-semibold">Enrolled</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-[#f0f0f0]">
+                                {% for ls in lab_statuses %}
+                                <tr class="hover:bg-[#fafafa]">
+                                    <td class="px-5 py-3">
+                                        <a class="font-semibold text-black hover:text-[#0067c0]" href="{% url 'student_lab_detail' ls.lab.id %}">{{ ls.lab.title }}</a>
+                                    </td>
+                                    <td class="px-5 py-3">
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-[#eaf4ff] px-2 py-0.5 text-xs font-semibold text-[#0067c0]">{{ ls.lab.hack_phase.name }}</span>
+                                    </td>
+                                    <td class="px-5 py-3 text-xs text-[#5c5c5c]">{{ ls.lab.resource_profile.name }}</td>
+                                    <td class="px-5 py-3">
+                                        {% if ls.progress.stages %}
+                                            <div class="flex items-center gap-2">
+                                                <div class="h-1.5 w-16 overflow-hidden rounded-full bg-[#e5e7eb]">
+                                                    <div class="h-full rounded-full bg-[#107c41] transition-all" style="width: {{ ls.progress.percent }}%"></div>
+                                                </div>
+                                                <span class="text-xs font-medium text-[#424242]">{{ ls.progress.percent }}%</span>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-xs text-[#8c8c8c]">&mdash;</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-5 py-3 text-center">
+                                        <span class="rounded-full bg-[#eaf4ff] px-2 py-0.5 text-xs font-semibold text-[#0067c0]">{{ ls.session_count }}</span>
+                                    </td>
+                                    <td class="px-5 py-3 text-center">
+                                        <span class="text-xs font-semibold {% if ls.submissions_correct > 0 %}text-[#107c41]{% else %}text-[#5c5c5c]{% endif %}">{{ ls.submissions_correct }}<span class="text-[#8c8c8c]">/{{ ls.submissions_total }}</span></span>
+                                    </td>
+                                    <td class="px-5 py-3">
+                                        {% if ls.progress.is_complete %}
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-[#ecfdf3] px-2.5 py-0.5 text-xs font-semibold text-[#107c41]">
+                                                <i data-lucide="check-circle" class="h-3 w-3"></i> Completed
+                                            </span>
+                                        {% elif ls.progress.stages %}
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-[#fff7ed] px-2.5 py-0.5 text-xs font-semibold text-[#c43e1c]">
+                                                <i data-lucide="play-circle" class="h-3 w-3"></i> In Progress
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-[#f2f2f2] px-2.5 py-0.5 text-xs font-semibold text-[#5c5c5c]">
+                                                <i data-lucide="clock" class="h-3 w-3"></i> Not Started
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-5 py-3 text-xs text-[#5c5c5c]">{{ ls.enrollment.enrolled_at|date:"M d, Y" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td class="px-5 py-10 text-center text-sm text-[#5c5c5c]" colspan="8">No enrolled labs.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <div id="tab-timeline" class="analytics-panel hidden">
                 <section class="rounded-xl border border-[#e0e0e0] bg-white shadow-sm">
                     <div class="border-b border-[#e0e0e0] px-5 py-4">
                         <h2 class="font-semibold text-black">Activity Timeline</h2>
@@ -146,14 +226,14 @@
                                         {% elif session.status == "running" %}
                                             {{ session.started_at|timesince }}
                                         {% else %}
-                                            —
+                                            &mdash;
                                         {% endif %}
                                     </td>
                                     <td class="px-6 py-4">
                                         {% if session.terminal_url %}
                                         <a class="text-xs text-[#0067c0] hover:underline" href="{{ session.terminal_url }}" target="_blank">port {{ session.terminal_port }}</a>
                                         {% else %}
-                                        <span class="text-xs text-[#5c5c5c]">—</span>
+                                        <span class="text-xs text-[#5c5c5c]">&mdash;</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -230,6 +310,7 @@
 (function() {
     var tabs = document.querySelectorAll('.analytics-tab');
     var panels = {
+        'labs-status': document.getElementById('tab-labs-status'),
         timeline: document.getElementById('tab-timeline'),
         sessions: document.getElementById('tab-sessions'),
         submissions: document.getElementById('tab-submissions'),
@@ -245,7 +326,7 @@
             this.classList.remove('border-transparent', 'text-[#5c5c5c]');
             this.classList.add('border-[#0067c0]', 'text-[#0067c0]');
             Object.keys(panels).forEach(function(key) {
-                panels[key].classList.add('hidden');
+                if (panels[key]) panels[key].classList.add('hidden');
             });
             if (panels[target]) panels[target].classList.remove('hidden');
         });

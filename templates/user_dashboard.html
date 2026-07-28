@@ -18,19 +18,13 @@
                         <div class="mb-4 flex items-center gap-3 rounded-lg border border-[#fed7aa] bg-[#fff7ed] px-4 py-3 text-sm">
                             <i data-lucide="clock" class="h-5 w-5 shrink-0 text-[#c43e1c]"></i>
                             <span class="text-[#c43e1c]">
-                                <strong>Sandbox active</strong> — {{ active_session.lab.title }} expires in {{ remaining }}
+                                <strong>Sandbox active</strong> &mdash; {{ active_session.lab.title }} expires in {{ remaining }}
                             </span>
                             <div class="ml-auto flex items-center gap-2">
-                                <a class="rounded-md bg-[#0067c0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_sandbox_view' active_session.id %}" target="_blank" rel="noopener">
-                                    <i data-lucide="external-link" class="mr-1 inline h-3 w-3"></i>
-                                    Resume
-                                </a>
+                                <a class="rounded-md bg-[#0067c0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_sandbox_view' active_session.id %}" target="_blank" rel="noopener">Resume</a>
                                 <form action="{% url 'stop_sandbox_session' active_session.id %}" method="post" class="inline">
                                     {% csrf_token %}
-                                    <button class="rounded-md bg-[#ef4444] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#dc2626]" type="submit">
-                                        <i data-lucide="square" class="mr-1 inline h-3 w-3"></i>
-                                        Stop
-                                    </button>
+                                    <button class="rounded-md bg-[#ef4444] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#dc2626]" type="submit">Stop</button>
                                 </form>
                             </div>
                         </div>
@@ -45,13 +39,13 @@
                 </div>
                 {% if next_lab %}
                     <a class="inline-flex items-center gap-2 rounded-md bg-[#0067c0] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_lab_detail' next_lab.id %}">
-                        Continue
-                        <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                        Continue <i data-lucide="arrow-right" class="h-4 w-4"></i>
                     </a>
                 {% endif %}
             </div>
 
-            <div class="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <!-- 6 stat cards -->
+            <div class="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <div class="stat-card rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
                     <div class="flex items-center gap-3">
                         <div class="relative h-14 w-14 shrink-0">
@@ -72,23 +66,63 @@
                 </div>
                 <div class="stat-card rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Enrolled labs</p>
-                    <p class="mt-2 text-2xl font-semibold text-black stat-glow">{{ enrolled_labs_count }}</p>
-                    <svg class="pointer-events-none absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <p class="mt-2 text-2xl font-semibold text-black">{{ enrolled_labs_count }}</p>
                 </div>
                 <div class="stat-card stat-card-green rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Completed</p>
-                    <p class="mt-2 text-2xl font-semibold text-black stat-glow">{{ completed_labs }}</p>
-                    <svg class="pointer-events-none absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <p class="mt-2 text-2xl font-semibold text-[#107c41]">{{ completed_labs }}</p>
                 </div>
-                <div class="stat-card stat-card-amber rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
-                    <p class="text-xs font-semibold text-[#5c5c5c]">This week</p>
-                    <p class="mt-2 text-2xl font-semibold text-black stat-glow">{{ labs_this_week }}</p>
-                    <svg class="pointer-events-none absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <div class="stat-card rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <p class="text-xs font-semibold text-[#5c5c5c]">Sandbox sessions</p>
+                    <p class="mt-2 text-2xl font-semibold text-black">{{ total_sessions_count }}</p>
+                </div>
+                <div class="stat-card rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <p class="text-xs font-semibold text-[#5c5c5c]">Flags solved</p>
+                    <p class="mt-2 text-2xl font-semibold text-[#0067c0]">{{ correct_flags_count }}<span class="text-sm text-[#8c8c8c]">/{{ total_flags_count }}</span></p>
                 </div>
                 <div class="stat-card stat-card-purple rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
                     <p class="text-xs font-semibold text-[#5c5c5c]">Streak</p>
-                    <p class="mt-2 text-2xl font-semibold text-black stat-glow">{{ streak }} day{{ streak|pluralize }}</p>
-                    <svg class="pointer-events-none absolute bottom-1 right-2 h-12 w-12 opacity-[.06]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg>
+                    <p class="mt-2 text-2xl font-semibold text-black">{{ streak }} day{{ streak|pluralize }}</p>
+                </div>
+            </div>
+
+            <!-- Secondary metric cards -->
+            <div class="mb-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-[#eaf4ff] text-[#0067c0]"><i data-lucide="clock" class="h-5 w-5"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#5c5c5c]">Total time in labs</p>
+                            <p class="text-lg font-semibold text-black">{{ total_sandbox_minutes }} min</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-[#ecfdf3] text-[#107c41]"><i data-lucide="timer" class="h-5 w-5"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#5c5c5c]">Avg session</p>
+                            <p class="text-lg font-semibold text-black">{{ avg_session_duration }} min</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-[#fff7ed] text-[#c43e1c]"><i data-lucide="target" class="h-5 w-5"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#5c5c5c]">Challenge accuracy</p>
+                            <p class="text-lg font-semibold text-black">{{ challenge_accuracy }}%</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="grid h-10 w-10 place-items-center rounded-xl bg-[#ede7f6] text-[#4527a0]"><i data-lucide="log-in" class="h-5 w-5"></i></div>
+                        <div>
+                            <p class="text-xs font-semibold text-[#5c5c5c]">Total logins</p>
+                            <p class="text-lg font-semibold text-black">{{ total_login_count }}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -125,7 +159,7 @@
                                             <span class="text-[#5c5c5c]">{{ s.stage|title }}</span>
                                         {% endif %}
                                     </div>
-                                    {% if not forloop.last %}<span class="text-[#d0d0d0]">—</span>{% endif %}
+                                    {% if not forloop.last %}<span class="text-[#d0d0d0]">&mdash;</span>{% endif %}
                                 {% endfor %}
                             </div>
                         </div>
@@ -138,6 +172,47 @@
                 </section>
             {% endif %}
 
+            <!-- Analytics Charts Section -->
+            <div class="mb-7">
+                <div class="mb-4 flex items-center gap-2">
+                    <i data-lucide="bar-chart-3" class="h-5 w-5 text-[#0067c0]"></i>
+                    <h2 class="text-base font-semibold text-[#424242]">Your Analytics</h2>
+                </div>
+                <div class="grid gap-5 lg:grid-cols-2">
+                    <!-- Session Activity (Line) -->
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Session Activity (30 days)</h3>
+                        <div class="relative" style="height:220px"><canvas id="chartSession"></canvas></div>
+                    </div>
+                    <!-- Labs by Phase (Doughnut) -->
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Labs by Phase</h3>
+                        <div class="relative mx-auto" style="height:220px;max-width:280px"><canvas id="chartPhase"></canvas></div>
+                    </div>
+                    <!-- Flag Success (Doughnut) -->
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Challenge Accuracy</h3>
+                        <div class="relative mx-auto" style="height:220px;max-width:280px"><canvas id="chartFlags"></canvas></div>
+                    </div>
+                    <!-- Login by Day of Week (Bar) -->
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Logins by Day of Week</h3>
+                        <div class="relative" style="height:220px"><canvas id="chartLogin"></canvas></div>
+                    </div>
+                    <!-- Sessions per Lab (Horizontal Bar) -->
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Most Used Labs</h3>
+                        <div class="relative" style="height:220px"><canvas id="chartLabUse"></canvas></div>
+                    </div>
+                    <!-- Hourly Activity (Bar) -->
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Activity by Hour of Day</h3>
+                        <div class="relative" style="height:220px"><canvas id="chartHourly"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enrolled labs table -->
             <section class="mb-7 overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#ededed] px-6 py-4">
                     <div class="flex flex-wrap items-center gap-3">
@@ -186,7 +261,7 @@
                                                     <span class="text-xs font-medium text-[#424242]">{{ progress.percent }}%</span>
                                                 </div>
                                             {% else %}
-                                                <span class="text-xs text-[#8c8c8c]">—</span>
+                                                <span class="text-xs text-[#8c8c8c]">&mdash;</span>
                                             {% endif %}
                                         </td>
                                         <td class="px-6 py-4">
@@ -202,8 +277,7 @@
                                         </td>
                                         <td class="px-6 py-4">
                                             <a class="inline-flex items-center gap-1 rounded-md bg-[#0067c0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_lab_detail' lab.id %}">
-                                                Open
-                                                <i data-lucide="arrow-right" class="h-3 w-3"></i>
+                                                Open <i data-lucide="arrow-right" class="h-3 w-3"></i>
                                             </a>
                                         </td>
                                     </tr>
@@ -221,19 +295,130 @@
                     </table>
                 </div>
             </section>
-
-            <script>
-                const phaseFilter = document.getElementById('phaseFilter');
-                const rows = document.querySelectorAll('#enrolledTable .lab-row');
-
-                phaseFilter.addEventListener('change', () => {
-                    const phase = phaseFilter.value;
-                    rows.forEach(row => {
-                        row.style.display = (!phase || row.dataset.phase === phase) ? '' : 'none';
-                    });
-                });
-            </script>
         </section>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    // Phase filter
+    var phaseFilter = document.getElementById('phaseFilter');
+    var rows = document.querySelectorAll('#enrolledTable .lab-row');
+    if (phaseFilter) {
+        phaseFilter.addEventListener('change', function() {
+            var phase = phaseFilter.value;
+            rows.forEach(function(row) {
+                row.style.display = (!phase || row.dataset.phase === phase) ? '' : 'none';
+            });
+        });
+    }
+
+    // Chart.js analytics
+    var D = {{ chart_data_json|safe }};
+    var blue = '#0067c0', green = '#107c41', amber = '#d99322', red = '#dc2626', purple = '#7c3aed', slate = '#64748b';
+    var blueBg = blue + '22', greenBg = green + '22';
+
+    var chartOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+            y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, stepSize: 1 }, beginAtZero: true }
+        }
+    };
+
+    var doughnutOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } }
+    };
+
+    // Session Activity (line)
+    if (D.session_chart.data.length) {
+        new Chart(document.getElementById('chartSession'), {
+            type: 'line',
+            data: {
+                labels: D.session_chart.labels,
+                datasets: [{
+                    data: D.session_chart.data,
+                    borderColor: blue, backgroundColor: blueBg,
+                    fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: blue, borderWidth: 2
+                }]
+            },
+            options: chartOpts
+        });
+    }
+
+    // Labs by Phase (doughnut)
+    if (D.phase_chart.data.length) {
+        var phaseColors = ['#0067c0', '#107c41', '#d99322', '#dc2626', '#7c3aed', '#0891b2', '#e11d48'];
+        new Chart(document.getElementById('chartPhase'), {
+            type: 'doughnut',
+            data: {
+                labels: D.phase_chart.labels,
+                datasets: [{ data: D.phase_chart.data, backgroundColor: phaseColors.slice(0, D.phase_chart.data.length), borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: doughnutOpts
+        });
+    }
+
+    // Flag success (doughnut)
+    new Chart(document.getElementById('chartFlags'), {
+        type: 'doughnut',
+        data: {
+            labels: D.flag_chart.labels,
+            datasets: [{ data: D.flag_chart.data, backgroundColor: [green, red], borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: doughnutOpts
+    });
+
+    // Login by day (bar)
+    if (D.login_chart.data.length) {
+        new Chart(document.getElementById('chartLogin'), {
+            type: 'bar',
+            data: {
+                labels: D.login_chart.labels,
+                datasets: [{ data: D.login_chart.data, backgroundColor: blue, borderRadius: 6, barThickness: 28 }]
+            },
+            options: chartOpts
+        });
+    }
+
+    // Sessions per lab (horizontal bar)
+    if (D.lab_session_chart.data.length) {
+        new Chart(document.getElementById('chartLabUse'), {
+            type: 'bar',
+            data: {
+                labels: D.lab_session_chart.labels,
+                datasets: [{ data: D.lab_session_chart.data, backgroundColor: [blue, green, amber, purple, slate, red], borderRadius: 6 }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, stepSize: 1 }, beginAtZero: true },
+                    y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    // Hourly activity (bar)
+    if (D.hourly_chart.data.length) {
+        new Chart(document.getElementById('chartHourly'), {
+            type: 'bar',
+            data: {
+                labels: D.hourly_chart.labels,
+                datasets: [{ data: D.hourly_chart.data, backgroundColor: purple + 'cc', borderRadius: 4 }]
+            },
+            options: chartOpts
+        });
+    }
+})();
+</script>
 {% endblock %}

@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Count, Q, ProtectedError
+from django.db.models import Count, F, Q, ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -45,7 +45,9 @@ from .models import (
     LabEnrollment,
     LabProgress,
     LearningPath,
+    LoginLog,
     Module,
+    PageViewLog,
     ResourceProfile,
     SandboxSession,
     SSHKey,
@@ -332,6 +334,96 @@ def user_dashboard(request):
 
     phases = HackPhase.objects.order_by("order", "name")
 
+    # --- Rich analytics data for Chart.js ---
+
+    # 1. Session activity by day (last 30 days)
+    thirty_days_ago = now - timezone.timedelta(days=30)
+    daily_sessions = (
+        SandboxSession.objects.filter(user=request.user, started_at__gte=thirty_days_ago)
+        .dates("started_at", "day", order="ASC")
+        .annotate(count=Count("id"))
+    )
+    session_chart_labels = [d.strftime("%b %d") for d in daily_sessions]
+    session_chart_data = [d.count for d in daily_sessions]
+
+    # 2. Labs by phase (doughnut)
+    phase_counts = (
+        LabEnrollment.objects.filter(user=request.user, is_active=True)
+        .values(phase_name="lab__hack_phase__name")
+        .annotate(count=Count("id"))
+        .order_by("phase_name")
+    )
+    phase_labels = [p["phase_name"] or "Unknown" for p in phase_counts]
+    phase_data = [p["count"] for p in phase_counts]
+
+    # 3. Flag submission success rate (doughnut)
+    total_flags = FlagSubmission.objects.filter(user=request.user).count()
+    correct_flags = FlagSubmission.objects.filter(user=request.user, is_correct=True).count()
+    wrong_flags = total_flags - correct_flags
+
+    # 4. Login frequency by day of week (last 30 days)
+    login_by_day = (
+        LoginLog.objects.filter(user=request.user, logged_in_at__gte=thirty_days_ago, success=True)
+        .annotate(dow=Count("id"))
+        .values("logged_in_at__week_day")
+        .annotate(count=Count("id"))
+        .order_by("logged_in_at__week_day")
+    )
+    # Django week_day: 1=Sunday, 2=Monday, ... 7=Saturday
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    login_chart_data = [0] * 7
+    for row in login_by_day:
+        django_dow = row["logged_in_at__week_day"]  # 1=Sun, 2=Mon, ..., 7=Sat
+        idx = (django_dow - 2) % 7  # Convert to 0=Mon, ..., 6=Sun
+        login_chart_data[idx] = row["count"]
+    login_chart_labels = day_names
+    login_chart_data = login_chart_data
+
+    # 5. Sessions per lab (top 6 labs by session count)
+    lab_sessions = (
+        SandboxSession.objects.filter(user=request.user)
+        .values(lab_title="lab__title")
+        .annotate(count=Count("id"))
+        .order_by("-count")[:6]
+    )
+    lab_session_labels = [l["lab_title"][:20] for l in lab_sessions]
+    lab_session_data = [l["count"] for l in lab_sessions]
+
+    # 6. Hourly activity heatmap (sessions by hour)
+    from django.db.models.functions import TruncHour
+    hourly_activity = (
+        SandboxSession.objects.filter(user=request.user, started_at__gte=thirty_days_ago)
+        .annotate(hour=TruncHour("started_at"))
+        .values("hour")
+        .annotate(count=Count("id"))
+        .order_by("hour")
+    )
+    hourly_labels = [h["hour"].strftime("%H:00") for h in hourly_activity]
+    hourly_data = [h["count"] for h in hourly_activity]
+
+    # 7. Total time in sandboxes (minutes)
+    total_sandbox_time = 0
+    for ses in SandboxSession.objects.filter(user=request.user, stopped_at__isnull=False):
+        delta = ses.stopped_at - ses.started_at
+        total_sandbox_time += int(delta.total_seconds() / 60)
+
+    # 8. Average session duration (minutes)
+    avg_session_duration = round(total_sandbox_time / max(1, SandboxSession.objects.filter(user=request.user, stopped_at__isnull=False).count()))
+
+    # 9. Challenge accuracy %
+    challenge_accuracy = round((correct_flags / max(1, total_flags)) * 100)
+
+    import json as _json
+
+    chart_data = {
+        "session_chart": {"labels": session_chart_labels, "data": session_chart_data},
+        "phase_chart": {"labels": phase_labels, "data": phase_data},
+        "flag_chart": {"labels": ["Correct", "Incorrect"], "data": [correct_flags, wrong_flags]},
+        "login_chart": {"labels": login_chart_labels, "data": login_chart_data},
+        "lab_session_chart": {"labels": lab_session_labels, "data": lab_session_data},
+        "hourly_chart": {"labels": hourly_labels, "data": hourly_data},
+    }
+
     return render(
         request,
         "user_dashboard.html",
@@ -355,6 +447,14 @@ def user_dashboard(request):
             "next_lab": next_lab_obj,
             "next_lab_progress": next_lab_progress,
             "now": now,
+            "chart_data_json": _json.dumps(chart_data),
+            "total_sessions_count": SandboxSession.objects.filter(user=request.user).count(),
+            "total_flags_count": total_flags,
+            "correct_flags_count": correct_flags,
+            "total_login_count": LoginLog.objects.filter(user=request.user, success=True).count(),
+            "total_sandbox_minutes": total_sandbox_time,
+            "avg_session_duration": avg_session_duration,
+            "challenge_accuracy": challenge_accuracy,
         },
     )
 
@@ -630,6 +730,28 @@ def instructor_student_analytics(request, user_id=None):
     running_sessions = sessions.filter(status=SandboxSession.RUNNING).count()
     flag_solved = submissions.filter(is_correct=True).values("lab").distinct().count()
 
+    # Lab statuses for the new "Labs Status" tab
+    enrollments = LabEnrollment.objects.filter(user=student, is_active=True).select_related("lab", "lab__hack_phase", "lab__resource_profile")
+    lab_statuses = []
+    for en in enrollments:
+        lp = lab_progress_for(student, en.lab)
+        # Count sessions for this lab
+        ses_count = sessions.filter(lab=en.lab).count()
+        # Count flag submissions for this lab
+        sub_count = submissions.filter(lab=en.lab).count()
+        correct_sub = submissions.filter(lab=en.lab, is_correct=True).count()
+        lab_statuses.append({
+            "enrollment": en,
+            "lab": en.lab,
+            "progress": lp,
+            "session_count": ses_count,
+            "submissions_total": sub_count,
+            "submissions_correct": correct_sub,
+        })
+
+    # Sort: incomplete first, then complete
+    lab_statuses.sort(key=lambda x: (x["progress"]["is_complete"], -x["enrollment"].enrolled_at.timestamp()))
+
     timeline = []
     for s in sessions:
         timeline.append({
@@ -674,6 +796,7 @@ def instructor_student_analytics(request, user_id=None):
             "running_sessions": running_sessions,
             "flag_solved": flag_solved,
             "timeline": timeline,
+            "lab_statuses": lab_statuses,
             "now": timezone.now(),
         },
     )
@@ -1591,3 +1714,323 @@ def sshkey_delete(request, key_id):
     key.delete()
     messages.success(request, f"SSH key '{name}' deleted.")
     return redirect("sshkey_list")
+
+
+# ---------------------------------------------------------------------------
+# Student Analytics PDF Export
+# ---------------------------------------------------------------------------
+
+@login_required
+@user_passes_test(_is_instructor)
+def student_analytics_pdf(request, user_id):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm, cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    student = get_object_or_404(User, pk=user_id)
+    now = timezone.now()
+
+    # Gather data
+    sessions = SandboxSession.objects.filter(user=student).select_related("lab").order_by("-started_at")
+    progress = LabProgress.objects.filter(user=student).select_related("lab").order_by("-completed_at")
+    submissions = FlagSubmission.objects.filter(user=student).select_related("lab").order_by("-submitted_at")
+    enrollments = LabEnrollment.objects.filter(user=student, is_active=True).select_related("lab", "lab__hack_phase", "lab__resource_profile")
+    login_logs = LoginLog.objects.filter(user=student).order_by("-logged_in_at")[:50]
+
+    total_labs = enrollments.count()
+    completed_labs = progress.filter(stage=LabProgress.COMPLETE, completed_at__isnull=False).count()
+    total_sessions = sessions.count()
+    flag_solved = submissions.filter(is_correct=True).values("lab").distinct().count()
+    total_sub = submissions.count()
+    correct_sub = submissions.filter(is_correct=True).count()
+
+    # Build PDF
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm, leftMargin=2*cm, rightMargin=2*cm)
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle("CustomTitle", parent=styles["Title"], fontSize=22, spaceAfter=6, textColor=colors.HexColor("#0067c0"))
+    heading_style = ParagraphStyle("CustomHeading", parent=styles["Heading2"], fontSize=14, spaceBefore=14, spaceAfter=6, textColor=colors.HexColor("#061526"))
+    sub_heading = ParagraphStyle("SubHeading", parent=styles["Heading3"], fontSize=11, spaceBefore=8, spaceAfter=4, textColor=colors.HexColor("#0067c0"))
+    body_style = ParagraphStyle("CustomBody", parent=styles["Normal"], fontSize=9, leading=13, textColor=colors.HexColor("#333333"))
+    small_style = ParagraphStyle("SmallBody", parent=styles["Normal"], fontSize=8, leading=11, textColor=colors.HexColor("#555555"))
+    center_style = ParagraphStyle("CenterBody", parent=body_style, alignment=TA_CENTER)
+
+    elements = []
+
+    # --- Cover / Header ---
+    elements.append(Paragraph("SomaCloud — Student Analytics Report", title_style))
+    elements.append(Spacer(1, 4*mm))
+    elements.append(Paragraph(f"Generated: {now.strftime('%B %d, %Y at %H:%M UTC')}", small_style))
+    elements.append(Spacer(1, 8*mm))
+
+    # --- Student Particulars ---
+    elements.append(Paragraph("Student Particulars", heading_style))
+    particulars = [
+        ["Username", student.username],
+        ["Full Name", student.get_full_name() or "—"],
+        ["Email", student.email or "—"],
+        ["Date Joined", student.date_joined.strftime("%B %d, %Y")],
+        ["Last Login", student.last_login.strftime("%B %d, %Y %H:%M") if student.last_login else "Never"],
+        ["Account Status", "Active" if student.is_active else "Inactive"],
+    ]
+    t = Table(particulars, colWidths=[120, 350])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f0f6ff")),
+        ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#0067c0")),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("PADDING", (0, 0), (-1, -1), 6),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e0e0e0")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 6*mm))
+
+    # --- Summary Stats ---
+    elements.append(Paragraph("Summary", heading_style))
+    stats = [
+        ["Enrolled Labs", "Completed", "Sessions", "Flags Solved", "Accuracy"],
+        [str(total_labs), str(completed_labs), str(total_sessions), f"{flag_solved} labs", f"{round(correct_sub/max(1,total_sub)*100)}%"],
+    ]
+    t = Table(stats, colWidths=[94]*5)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0067c0")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("PADDING", (0, 0), (-1, -1), 6),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#c0c0c0")),
+        ("BACKGROUND", (0, 1), (-1, 1), colors.HexColor("#f8fbff")),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 8*mm))
+
+    # --- Lab Statuses ---
+    elements.append(Paragraph("Lab Enrollment &amp; Progress", heading_style))
+    lab_header = ["Lab", "Phase", "Progress", "Sessions", "Flags", "Status"]
+    lab_rows = [lab_header]
+    for en in enrollments:
+        lp = lab_progress_for(student, en.lab)
+        ses_count = sessions.filter(lab=en.lab).count()
+        sub_count = submissions.filter(lab=en.lab).count()
+        correct = submissions.filter(lab=en.lab, is_correct=True).count()
+        status = "Completed" if lp["is_complete"] else ("In Progress" if lp.get("stages") else "Not Started")
+        pct = lp.get("percent", 0) if lp.get("stages") else 0
+        lab_rows.append([
+            Paragraph(en.lab.title[:30], small_style),
+            en.lab.hack_phase.name[:15],
+            f"{pct}%",
+            str(ses_count),
+            f"{correct}/{sub_count}",
+            status,
+        ])
+    t = Table(lab_rows, colWidths=[120, 65, 55, 55, 50, 75])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#061526")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("PADDING", (0, 0), (-1, -1), 5),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e0e0e0")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8f8f8")]),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 8*mm))
+
+    # --- Challenge Submissions ---
+    elements.append(Paragraph("Challenge Submissions", heading_style))
+    sub_header = ["Lab", "Submitted Flag", "Result", "Time"]
+    sub_rows = [sub_header]
+    for sub in submissions[:30]:
+        sub_rows.append([
+            Paragraph(sub.lab.title[:25], small_style),
+            Paragraph(sub.submitted_flag[:40], small_style),
+            "Correct" if sub.is_correct else "Incorrect",
+            sub.submitted_at.strftime("%b %d, %H:%M"),
+        ])
+    if len(sub_rows) > 1:
+        t = Table(sub_rows, colWidths=[100, 160, 55, 90])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0067c0")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("PADDING", (0, 0), (-1, -1), 5),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e0e0e0")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8f8f8")]),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        # Color the result cells
+        for i, row in enumerate(sub_rows[1:], 1):
+            if row[2] == "Correct":
+                t.setStyle(TableStyle([("TEXTCOLOR", (2, i), (2, i), colors.HexColor("#107c41"))]))
+            else:
+                t.setStyle(TableStyle([("TEXTCOLOR", (2, i), (2, i), colors.HexColor("#dc2626"))]))
+        elements.append(t)
+    else:
+        elements.append(Paragraph("No submissions yet.", small_style))
+    elements.append(Spacer(1, 6*mm))
+
+    # --- Graphical Analytics (matplotlib charts as images) ---
+    elements.append(PageBreak())
+    elements.append(Paragraph("Graphical Analytics", heading_style))
+
+    # Chart 1: Progress by Stage (bar)
+    stages_count = {"Theory": 0, "Sandbox": 0, "Challenge": 0, "Complete": 0}
+    for p in progress:
+        name = p.get_stage_display()
+        stages_count[name] = stages_count.get(name, 0) + 1
+    fig, ax = plt.subplots(figsize=(6, 3))
+    stage_names = list(stages_count.keys())
+    stage_vals = list(stages_count.values())
+    bar_colors = ["#0067c0", "#107c41", "#d99322", "#5c5c5c"]
+    bars = ax.bar(stage_names, stage_vals, color=bar_colors[:len(stage_names)], edgecolor="white", linewidth=0.5)
+    ax.set_ylabel("Labs", fontsize=9)
+    ax.set_title("Progress by Stage", fontsize=11, fontweight="semibold")
+    for bar, v in zip(bars, stage_vals):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1, str(v), ha="center", va="bottom", fontsize=10)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.tick_params(axis="both", labelsize=8)
+    plt.tight_layout()
+    chart1_buf = io.BytesIO()
+    fig.savefig(chart1_buf, format="png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    chart1_buf.seek(0)
+    elements.append(Image(chart1_buf, width=16*cm, height=8*cm))
+    elements.append(Spacer(1, 6*mm))
+
+    # Chart 2: Session Activity (area)
+    thirty_days_ago = now - timedelta(days=30)
+    daily = {}
+    for s in sessions.filter(started_at__gte=thirty_days_ago):
+        day = s.started_at.strftime("%b %d")
+        daily[day] = daily.get(day, 0) + 1
+    fig, ax = plt.subplots(figsize=(6, 3))
+    days_list = list(daily.keys())
+    counts_list = list(daily.values())
+    if days_list:
+        ax.fill_between(range(len(days_list)), counts_list, alpha=0.3, color="#0067c0")
+        ax.plot(range(len(days_list)), counts_list, color="#0067c0", linewidth=2, marker="o", markersize=4)
+        ax.set_xticks(range(len(days_list)))
+        ax.set_xticklabels(days_list, rotation=45, ha="right", fontsize=7)
+    ax.set_ylabel("Sessions", fontsize=9)
+    ax.set_title("Session Activity (30 days)", fontsize=11, fontweight="semibold")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.tick_params(axis="both", labelsize=8)
+    plt.tight_layout()
+    chart2_buf = io.BytesIO()
+    fig.savefig(chart2_buf, format="png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    chart2_buf.seek(0)
+    elements.append(Image(chart2_buf, width=16*cm, height=8*cm))
+    elements.append(Spacer(1, 6*mm))
+
+    # Chart 3: Flag success rate (pie)
+    fig, ax = plt.subplots(figsize=(4, 4))
+    ax.pie([correct_sub, max(0, total_sub - correct_sub)], labels=["Correct", "Incorrect"],
+           colors=["#107c41", "#dc2626"], autopct="%1.0f%%", startangle=90,
+           textprops={"fontsize": 10})
+    ax.set_title("Challenge Accuracy", fontsize=11, fontweight="semibold")
+    plt.tight_layout()
+    chart3_buf = io.BytesIO()
+    fig.savefig(chart3_buf, format="png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    chart3_buf.seek(0)
+    elements.append(Image(chart3_buf, width=10*cm, height=10*cm))
+    elements.append(Spacer(1, 6*mm))
+
+    # Chart 4: Sessions per lab (horizontal bar)
+    lab_ses = (
+        SandboxSession.objects.filter(user=student)
+        .values(lab_title="lab__title")
+        .annotate(count=Count("id"))
+        .order_by("-count")[:8]
+    )
+    if lab_ses:
+        fig, ax = plt.subplots(figsize=(6, 3))
+        labels = [l["lab_title"][:25] for l in reversed(list(lab_ses))]
+        vals = [l["count"] for l in reversed(list(lab_ses))]
+        ax.barh(labels, vals, color="#0067c0", edgecolor="white", height=0.6)
+        ax.set_xlabel("Sessions", fontsize=9)
+        ax.set_title("Most Used Labs", fontsize=11, fontweight="semibold")
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.tick_params(axis="both", labelsize=8)
+        plt.tight_layout()
+        chart4_buf = io.BytesIO()
+        fig.savefig(chart4_buf, format="png", dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        chart4_buf.seek(0)
+        elements.append(Image(chart4_buf, width=16*cm, height=8*cm))
+
+    # --- Activity Log with Timestamps ---
+    elements.append(PageBreak())
+    elements.append(Paragraph("Activity Log", heading_style))
+    elements.append(Paragraph("Chronological record of sessions, progress completions, and flag submissions.", small_style))
+    elements.append(Spacer(1, 4*mm))
+
+    log_header = ["Timestamp", "Type", "Description"]
+    log_rows = [log_header]
+    for s in sessions[:40]:
+        log_rows.append([
+            s.started_at.strftime("%Y-%m-%d %H:%M"),
+            "Session",
+            f"Sandbox {s.get_status_display().lower()} — {s.lab.title}",
+        ])
+    for p in progress.filter(completed_at__isnull=False)[:40]:
+        log_rows.append([
+            p.completed_at.strftime("%Y-%m-%d %H:%M") if p.completed_at else "—",
+            "Progress",
+            f"{p.get_stage_display()} completed — {p.lab.title}",
+        ])
+    for sub in submissions[:40]:
+        log_rows.append([
+            sub.submitted_at.strftime("%Y-%m-%d %H:%M"),
+            "Flag",
+            f"{'Correct' if sub.is_correct else 'Incorrect'} — {sub.lab.title}: {sub.submitted_flag[:30]}",
+        ])
+    for ll in login_logs[:20]:
+        log_rows.append([
+            ll.logged_in_at.strftime("%Y-%m-%d %H:%M"),
+            "Login",
+            f"{'Success' if ll.success else 'Failed'} from {ll.ip_address or 'unknown'}",
+        ])
+    log_rows.sort(key=lambda x: x[0], reverse=True)
+
+    if len(log_rows) > 1:
+        t = Table(log_rows, colWidths=[100, 55, 310])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#061526")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 7),
+            ("PADDING", (0, 0), (-1, -1), 4),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e0e0e0")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8f8f8")]),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        elements.append(t)
+    else:
+        elements.append(Paragraph("No activity recorded.", small_style))
+
+    # Footer
+    elements.append(Spacer(1, 10*mm))
+    elements.append(Paragraph(f"Report generated by SomaCloud on {now.strftime('%B %d, %Y at %H:%M UTC')}.", center_style))
+
+    doc.build(elements)
+    buf.seek(0)
+
+    from django.http import HttpResponse
+    response = HttpResponse(buf.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="analytics_{student.username}_{now.strftime("%Y%m%d")}.pdf"'
+    return response

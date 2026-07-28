@@ -21,6 +21,7 @@ urlpatterns = [
     path("instructor/students/<int:user_id>/analytics/", views.instructor_student_analytics, name="instructor_student_analytics_detail"),
     path("instructor/students/<int:user_id>/chart/progress/", views.analytics_chart_progress, name="analytics_chart_progress"),
     path("instructor/students/<int:user_id>/chart/sessions/", views.analytics_chart_sessions, name="analytics_chart_sessions"),
+    path("instructor/students/<int:user_id>/pdf/", views.student_analytics_pdf, name="student_analytics_pdf"),
     path("instructor/resource-profiles/", views.instructor_resource_profiles, name="instructor_resource_profiles"),
     path("instructor/resource-profiles/create/", views.instructor_resource_profile_create, name="instructor_resource_profile_create"),
     path("instructor/resource-profiles/<int:profile_id>/edit/", views.instructor_resource_profile_edit, name="instructor_resource_profile_edit"),

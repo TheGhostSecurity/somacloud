@@ -481,3 +481,39 @@ class Assessment(models.Model):
 
     def __str__(self):
         return f"Assessment for {self.activity.title}"
+
+
+class LoginLog(models.Model):
+    """Tracks every login for behavioral analytics and ML/decision-support models."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="login_logs")
+    logged_in_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=500, blank=True)
+    session_key = models.CharField(max_length=64, blank=True)
+    method = models.CharField(max_length=10, blank=True, help_text="LOGIN, SIGNUP, SSO")
+    success = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-logged_in_at"]
+
+    def __str__(self):
+        return f"{self.user.username} login at {self.logged_in_at:%Y-%m-%d %H:%M}"
+
+
+class PageViewLog(models.Model):
+    """Tracks page views per user session for engagement heatmaps and ML features."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="page_views", null=True, blank=True)
+    path = models.CharField(max_length=500)
+    view_name = models.CharField(max_length=200, blank=True)
+    method = models.CharField(max_length=10, blank=True)
+    status_code = models.PositiveIntegerField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=500, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    duration_ms = models.PositiveIntegerField(null=True, blank=True, help_text="Time spent on page in ms")
+
+    class Meta:
+        ordering = ["-timestamp"]
+
+    def __str__(self):
+        return f"{self.path} at {self.timestamp:%Y-%m-%d %H:%M}"
