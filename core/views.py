@@ -338,13 +338,16 @@ def user_dashboard(request):
 
     # 1. Session activity by day (last 30 days)
     thirty_days_ago = now - timezone.timedelta(days=30)
+    from django.db.models.functions import TruncDay
     daily_sessions = (
         SandboxSession.objects.filter(user=request.user, started_at__gte=thirty_days_ago)
-        .dates("started_at", "day", order="ASC")
+        .annotate(day=TruncDay("started_at"))
+        .values("day")
         .annotate(count=Count("id"))
+        .order_by("day")
     )
-    session_chart_labels = [d.strftime("%b %d") for d in daily_sessions]
-    session_chart_data = [d.count for d in daily_sessions]
+    session_chart_labels = [d["day"].strftime("%b %d") for d in daily_sessions]
+    session_chart_data = [d["count"] for d in daily_sessions]
 
     # 2. Labs by phase (doughnut)
     phase_counts = (
