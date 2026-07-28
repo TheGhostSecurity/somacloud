@@ -14,7 +14,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Count, F, Q, ProtectedError
+from django.db.models import Count, Q, ProtectedError
+from django.db.models.functions import TruncDay, TruncHour
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -47,7 +48,6 @@ from .models import (
     LearningPath,
     LoginLog,
     Module,
-    PageViewLog,
     ResourceProfile,
     SandboxSession,
     SSHKey,
@@ -338,7 +338,6 @@ def user_dashboard(request):
 
     # 1. Session activity by day (last 30 days)
     thirty_days_ago = now - timezone.timedelta(days=30)
-    from django.db.models.functions import TruncDay
     daily_sessions = (
         SandboxSession.objects.filter(user=request.user, started_at__gte=thirty_days_ago)
         .annotate(day=TruncDay("started_at"))
@@ -367,7 +366,6 @@ def user_dashboard(request):
     # 4. Login frequency by day of week (last 30 days)
     login_by_day = (
         LoginLog.objects.filter(user=request.user, logged_in_at__gte=thirty_days_ago, success=True)
-        .annotate(dow=Count("id"))
         .values("logged_in_at__week_day")
         .annotate(count=Count("id"))
         .order_by("logged_in_at__week_day")
@@ -380,7 +378,6 @@ def user_dashboard(request):
         idx = (django_dow - 2) % 7  # Convert to 0=Mon, ..., 6=Sun
         login_chart_data[idx] = row["count"]
     login_chart_labels = day_names
-    login_chart_data = login_chart_data
 
     # 5. Sessions per lab (top 6 labs by session count)
     lab_sessions = (
@@ -393,7 +390,6 @@ def user_dashboard(request):
     lab_session_data = [l["count"] for l in lab_sessions]
 
     # 6. Hourly activity heatmap (sessions by hour)
-    from django.db.models.functions import TruncHour
     hourly_activity = (
         SandboxSession.objects.filter(user=request.user, started_at__gte=thirty_days_ago)
         .annotate(hour=TruncHour("started_at"))
@@ -415,8 +411,6 @@ def user_dashboard(request):
 
     # 9. Challenge accuracy %
     challenge_accuracy = round((correct_flags / max(1, total_flags)) * 100)
-
-    import json as _json
 
     chart_data = {
         "session_chart": {"labels": session_chart_labels, "data": session_chart_data},
@@ -450,7 +444,7 @@ def user_dashboard(request):
             "next_lab": next_lab_obj,
             "next_lab_progress": next_lab_progress,
             "now": now,
-            "chart_data_json": _json.dumps(chart_data),
+            "chart_data_json": json.dumps(chart_data),
             "total_sessions_count": SandboxSession.objects.filter(user=request.user).count(),
             "total_flags_count": total_flags,
             "correct_flags_count": correct_flags,
