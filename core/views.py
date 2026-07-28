@@ -352,11 +352,11 @@ def user_dashboard(request):
     # 2. Labs by phase (doughnut)
     phase_counts = (
         LabEnrollment.objects.filter(user=request.user, is_active=True)
-        .values(phase_name="lab__hack_phase__name")
+        .values("lab__hack_phase__name")
         .annotate(count=Count("id"))
-        .order_by("phase_name")
+        .order_by("lab__hack_phase__name")
     )
-    phase_labels = [p["phase_name"] or "Unknown" for p in phase_counts]
+    phase_labels = [p["lab__hack_phase__name"] or "Unknown" for p in phase_counts]
     phase_data = [p["count"] for p in phase_counts]
 
     # 3. Flag submission success rate (doughnut)
