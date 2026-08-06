@@ -42,6 +42,9 @@
                         Continue <i data-lucide="arrow-right" class="h-4 w-4"></i>
                     </a>
                 {% endif %}
+                <a class="inline-flex items-center gap-2 rounded-md border border-[#0067c0] bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] hover:bg-[#eaf4ff]" href="{% url 'student_labs' %}">
+                    See all available labs <i data-lucide="compass" class="h-4 w-4"></i>
+                </a>
             </div>
 
             <!-- 6 stat cards -->
@@ -184,7 +187,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <a class="text-sm font-semibold text-[#0067c0] hover:underline" href="{% url 'student_labs' %}">Browse all</a>
+                    <a class="text-sm font-semibold text-[#0067c0] hover:underline" href="{% url 'student_labs' %}">See all available labs</a>
                 </div>
                 <div class="overflow-x-auto">
                     <table id="enrolledTable" class="w-full min-w-[700px] text-left text-sm">
@@ -254,6 +257,17 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="enrolledPagination" class="paginated-bar mt-2 hidden items-center justify-center gap-5 border-t border-[#ededed] px-6 py-5">
+                    <button type="button" class="paginated-prev inline-flex items-center gap-1.5 rounded-full border border-[#0067c0]/25 bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] shadow-sm transition hover:-translate-y-px hover:border-[#0067c0]/50 hover:bg-[#eaf4ff] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:hover:border-[#0067c0]/25 disabled:hover:bg-white">
+                        <i data-lucide="chevron-left" class="h-4 w-4"></i> Previous
+                    </button>
+                    <span class="rounded-full bg-[#f2f2f2] px-3.5 py-1.5 text-sm font-medium text-[#5c5c5c]">
+                        Page <span class="paginated-current font-bold text-black">1</span> <span class="text-[#b0b0b0]">/</span> <span class="paginated-total font-bold text-black">1</span>
+                    </span>
+                    <button type="button" class="paginated-next inline-flex items-center gap-1.5 rounded-full border border-[#0067c0]/25 bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] shadow-sm transition hover:-translate-y-px hover:border-[#0067c0]/50 hover:bg-[#eaf4ff] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:hover:border-[#0067c0]/25 disabled:hover:bg-white">
+                        Next <i data-lucide="chevron-right" class="h-4 w-4"></i>
+                    </button>
+                </div>
             </section>
         </section>
     </div>
@@ -261,16 +275,41 @@
 
 <script>
 (function() {
+    var PER_PAGE = 6;
+    var table = document.getElementById('enrolledTable');
+    if (!table) return;
+    var allRows = Array.prototype.slice.call(table.querySelectorAll('.lab-row'));
     var phaseFilter = document.getElementById('phaseFilter');
-    var rows = document.querySelectorAll('#enrolledTable .lab-row');
-    if (phaseFilter) {
-        phaseFilter.addEventListener('change', function() {
-            var phase = phaseFilter.value;
-            rows.forEach(function(row) {
-                row.style.display = (!phase || row.dataset.phase === phase) ? '' : 'none';
-            });
+    var bar = document.getElementById('enrolledPagination');
+    var currentPage = 1;
+
+    function visibleRows() {
+        var phase = phaseFilter ? phaseFilter.value : '';
+        return allRows.filter(function(row) {
+            return !phase || row.dataset.phase === phase;
         });
     }
+
+    function render() {
+        var rows = visibleRows();
+        if (!rows.length) { bar.classList.add('hidden'); return; }
+        var pages = Math.ceil(rows.length / PER_PAGE);
+        currentPage = Math.max(1, Math.min(currentPage, pages));
+        allRows.forEach(function(row) { row.style.display = 'none'; });
+        rows.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE).forEach(function(row) {
+            row.style.display = '';
+        });
+        bar.querySelector('.paginated-current').textContent = currentPage;
+        bar.querySelector('.paginated-total').textContent = pages;
+        bar.querySelector('.paginated-prev').disabled = currentPage <= 1;
+        bar.querySelector('.paginated-next').disabled = currentPage >= pages;
+        bar.classList.remove('hidden');
+    }
+
+    if (phaseFilter) phaseFilter.addEventListener('change', function() { currentPage = 1; render(); });
+    bar.querySelector('.paginated-prev').addEventListener('click', function() { currentPage--; render(); });
+    bar.querySelector('.paginated-next').addEventListener('click', function() { currentPage++; render(); });
+    render();
 })();
 </script>
 {% endblock %}

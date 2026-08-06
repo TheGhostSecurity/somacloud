@@ -1,10 +1,11 @@
 from django.core.management.base import BaseCommand
 
 from core.models import DockerNode
+from core.orchestrator import verify_node
 
 
 class Command(BaseCommand):
-    help = "Register a Docker Swarm worker node."
+    help = "Register a Docker worker node."
 
     def add_arguments(self, parser):
         parser.add_argument("--name", required=True, help="Node name (e.g. worker-1)")
@@ -15,6 +16,7 @@ class Command(BaseCommand):
         parser.add_argument("--port-end", type=int, default=9100, help="End of port range")
         parser.add_argument("--total-cpu", type=float, default=2.0, help="Total CPU cores")
         parser.add_argument("--total-memory", type=int, default=3500, help="Total memory in MB")
+        parser.add_argument("--verify", action="store_true", help="Run smoke test after registration")
 
     def handle(self, *args, **options):
         name = options["name"]
@@ -33,3 +35,14 @@ class Command(BaseCommand):
             total_memory_mb=options["total_memory"],
         )
         self.stdout.write(self.style.SUCCESS(f"Registered node '{name}' (ID: {node.id})"))
+
+        if options["verify"]:
+            self.stdout.write("Running verification…")
+            results, passed = verify_node(node)
+            for r in results:
+                icon = "✓" if r["status"] == "pass" else "✗" if r["status"] == "fail" else "?"
+                self.stdout.write(f"  {icon} {r['step']}: {r['detail']}")
+            if passed:
+                self.stdout.write(self.style.SUCCESS(f"Verify passed for {node.name}"))
+            else:
+                self.stdout.write(self.style.ERROR(f"Verify FAILED for {node.name}"))

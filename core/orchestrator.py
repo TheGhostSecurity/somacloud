@@ -316,6 +316,99 @@ def _fail(session, container_ids, network, node=None):
 
 
 # ---------------------------------------------------------------------------
+# Node verification (smoke test)
+# ---------------------------------------------------------------------------
+
+def verify_node(node):
+    """Run a full smoke test on a worker node.
+
+    Tests:
+      1. Docker daemon ping
+      2. Pull a small test image (alpine)
+      3. Create a test container
+      4. Start container and wait for exit (exit code 0)
+      5. Clean up (remove container + image)
+
+    Returns (results, all_passed) where *results* is a list of dicts with
+    keys: step, status ("pass"|"fail"|"skip"|"warn"), detail.
+    """
+    import time
+    results = []
+    test_image = "alpine:latest"
+    test_name = f"somacloud-verify-{uuid.uuid4().hex[:8]}"
+
+    def _r(step, status, detail):
+        results.append({"step": step, "status": status, "detail": detail})
+
+    # Step 1 — Ping
+    ping = _docker_api("/_ping", method="get", timeout=10, node=node)
+    if ping is None:
+        _r("Daemon ping", "fail", "Docker daemon did not respond to /_ping")
+        return results, False
+    _r("Daemon ping", "pass", "Docker daemon responded")
+
+    # Step 2 — Pull a small image
+    encoded = quote(test_image, safe="")
+    already = _docker_api(f"/images/{encoded}/json", method="get", node=node)
+    if already is None:
+        pulled = _docker_api(f"/images/create?fromImage={encoded}", method="post", timeout=120, node=node)
+        if pulled is None:
+            _r("Pull test image", "fail", f"Failed to pull {test_image}")
+            return results, False
+        _r("Pull test image", "pass", f"{test_image} pulled successfully")
+    else:
+        _r("Pull test image", "pass", f"{test_image} already present")
+
+    # Step 3 — Create a test container (default bridge network, no port bindings)
+    create_data = {
+        "Image": test_image,
+        "Cmd": ["/bin/sh", "-c", "echo 'somacloud-verify-ok'"],
+        "Labels": {"somacloud.managed": "true", "somacloud.verify": "true"},
+    }
+    created = _docker_api(f"/containers/create?name={quote(test_name, safe='')}", data=create_data, node=node)
+    if not created or not created.get("Id"):
+        _r("Create container", "fail", "Container create call returned no Id")
+        return results, False
+    cid = created["Id"]
+    _r("Create container", "pass", f"Container {cid[:12]} created")
+
+    # Step 4 — Start and wait for exit
+    started = _docker_api(f"/containers/{cid}/start", method="post", node=node)
+    if started is None:
+        _r("Start container", "fail", "Container did not start")
+        _remove_container(cid, node=node)
+        return results, False
+    for _ in range(15):
+        info = _docker_api(f"/containers/{cid}/json", method="get", node=node)
+        if info and info.get("State", {}).get("ExitCode") is not None:
+            break
+        time.sleep(1)
+    exit_code = info.get("State", {}).get("ExitCode") if info else -1
+    if exit_code != 0:
+        detail = f"Container exited with code {exit_code}"
+        logs = _docker_api(f"/containers/{cid}/logs?stdout=1&stderr=1", method="get", node=node)
+        if logs:
+            detail += f"; logs: {logs}"
+        _r("Start container", "fail", detail)
+        _remove_container(cid, node=node)
+        return results, False
+    _r("Start container", "pass", f"Container started and exited with code 0")
+
+    # Step 5 — Clean up
+    _remove_container(cid, node=node)
+    _r("Cleanup container", "pass", f"Container {cid[:12]} removed")
+
+    pulld = _docker_api(f"/images/{encoded}/json", method="get", node=node)
+    if pulld is not None:
+        _docker_api(f"/images/{encoded}", method="delete", node=node)
+        _r("Cleanup image", "pass", f"{test_image} removed")
+    else:
+        _r("Cleanup image", "skip", "Image already gone")
+
+    return results, all(r["status"] == "pass" for r in results)
+
+
+# ---------------------------------------------------------------------------
 # Deploy / Stop / Status
 # ---------------------------------------------------------------------------
 

@@ -67,6 +67,10 @@ def ensure_ca():
             ),
             critical=True,
         )
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(key.public_key()),
+            critical=False,
+        )
         .sign(key, hashes.SHA256())
     )
     key_path.write_bytes(key.private_bytes(
@@ -79,7 +83,7 @@ def ensure_ca():
     return str(key_path), str(cert_path)
 
 
-def sign_csr(csr_pem: bytes) -> bytes:
+def sign_csr(csr_pem: bytes, node_ip: str | None = None) -> bytes:
     """Sign a PEM-encoded CSR with our CA. Returns the signed cert PEM."""
     ensure_ca()
     ca_key = serialization.load_pem_private_key(_ca_key_path().read_bytes(), password=None)
@@ -87,6 +91,10 @@ def sign_csr(csr_pem: bytes) -> bytes:
     csr = x509.load_pem_x509_csr(csr_pem)
     if not csr.is_signature_valid:
         raise ValueError("CSR signature is invalid")
+
+    san = [x509.DNSName("*")]
+    if node_ip:
+        san.append(x509.IPAddress(__import__("ipaddress").ip_address(node_ip)))
 
     cert = (
         x509.CertificateBuilder()
@@ -96,9 +104,11 @@ def sign_csr(csr_pem: bytes) -> bytes:
         .serial_number(x509.random_serial_number())
         .not_valid_before(__import__("datetime").datetime.utcnow())
         .not_valid_after(__import__("datetime").datetime.utcnow() + __import__("datetime").timedelta(days=365))
-        .add_extension(x509.SubjectAlternativeName([
-            x509.DNSName("*"),
-        ]), critical=False)
+        .add_extension(x509.SubjectAlternativeName(san), critical=False)
+        .add_extension(
+            x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
+            critical=False,
+        )
         .sign(ca_key, hashes.SHA256())
     )
     return cert.public_bytes(serialization.Encoding.PEM)
@@ -110,16 +120,23 @@ def get_ca_cert_pem() -> bytes:
     return _ca_cert_path().read_bytes()
 
 
-def generate_client_cert(name: str) -> tuple[str, str]:
+def generate_client_cert(name: str, node_ip: str | None = None) -> tuple[str, str]:
     """Generate a client cert for the app server to authenticate to a worker.
 
-    Returns (cert_path, key_path) stored under ca/<name>/.
+    Returns (cert_path, key_path) stored under DOCKER_TLS_CERT_DIR/<name>/.
+    Also copies the CA cert as ca.pem so the orchestrator can find all three.
     """
     ensure_ca()
-    node_dir = _ca_dir() / name
+    from django.conf import settings
+    node_dir = Path(settings.DOCKER_TLS_CERT_DIR) / name
     node_dir.mkdir(parents=True, exist_ok=True)
     cert_path = node_dir / "cert.pem"
     key_path = node_dir / "key.pem"
+    ca_copy = node_dir / "ca.pem"
+
+    # Copy CA cert if missing
+    if not ca_copy.exists():
+        ca_copy.write_bytes(get_ca_cert_pem())
 
     if cert_path.exists() and key_path.exists():
         return str(cert_path), str(key_path)
@@ -131,6 +148,10 @@ def generate_client_cert(name: str) -> tuple[str, str]:
         x509.NameAttribute(NameOID.COMMON_NAME, f"somacloud-client-{name}"),
         x509.NameAttribute(NameOID.ORGANIZATION_NAME, "SomaCloud"),
     ])
+    san = [x509.DNSName(name)]
+    if node_ip:
+        san.append(x509.IPAddress(__import__("ipaddress").ip_address(node_ip)))
+
     cert = (
         x509.CertificateBuilder()
         .subject_name(subject)
@@ -139,8 +160,13 @@ def generate_client_cert(name: str) -> tuple[str, str]:
         .serial_number(x509.random_serial_number())
         .not_valid_before(__import__("datetime").datetime.utcnow())
         .not_valid_after(__import__("datetime").datetime.utcnow() + __import__("datetime").timedelta(days=365))
+        .add_extension(x509.SubjectAlternativeName(san), critical=False)
         .add_extension(
             x509.ExtendedKeyUsage([x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH]),
+            critical=False,
+        )
+        .add_extension(
+            x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()),
             critical=False,
         )
         .sign(ca_key, hashes.SHA256())

@@ -34,6 +34,9 @@
                     <a class="inline-flex items-center gap-2 rounded-md border border-[#c8c8c8] bg-white px-4 py-2 text-sm font-semibold text-[#424242] hover:bg-[#f7f7f7]" href="{% url 'node_health' node.id %}">
                         <i data-lucide="heart-pulse" class="h-4 w-4"></i>Health Check
                     </a>
+                    <a class="inline-flex items-center gap-2 rounded-md border border-[#c8c8c8] bg-white px-4 py-2 text-sm font-semibold text-[#424242] hover:bg-[#f7f7f7]" href="{% url 'node_verify' node.id %}">
+                        <i data-lucide="test-tube" class="h-4 w-4"></i>Verify
+                    </a>
                     <form action="{% url 'node_toggle' node.id %}" method="post" class="inline" onsubmit="return confirm('{% if node.status == "active" %}Deactivate node \'{{ node.name }}\'?{% else %}Reactivate node \'{{ node.name }}\'?{% endif %}')">
                         {% csrf_token %}
                         {% if node.status == "active" %}

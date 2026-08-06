@@ -33,7 +33,7 @@
                     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {% for lab in phase.labs.all %}
                             {% if lab.is_published %}
-                                <article class="visual-lab-card rounded-xl border border-[#e0e0e0] bg-white shadow-sm">
+                                <article class="paginated-item visual-lab-card rounded-xl border border-[#e0e0e0] bg-white shadow-sm">
                                     <div class="flex h-16 items-center gap-3 rounded-t-xl bg-[#0d2744] px-5">
                                         <span class="grid h-8 w-8 place-items-center rounded-lg bg-white/10 text-sm font-bold text-white/80">{{ forloop.counter }}</span>
                                         <h3 class="truncate text-sm font-semibold text-white">{{ lab.title }}</h3>
@@ -83,6 +83,17 @@
                             </div>
                         {% endfor %}
                     </div>
+                    <div class="paginated-bar mt-8 hidden items-center justify-center gap-5">
+                        <button type="button" class="paginated-prev inline-flex items-center gap-1.5 rounded-full border border-[#0067c0]/25 bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] shadow-sm transition hover:-translate-y-px hover:border-[#0067c0]/50 hover:bg-[#eaf4ff] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:hover:border-[#0067c0]/25 disabled:hover:bg-white" onclick="pageMove(this.closest('.phase-content'), -1)">
+                            <i data-lucide="chevron-left" class="h-4 w-4"></i> Previous
+                        </button>
+                        <span class="rounded-full bg-[#f2f2f2] px-3.5 py-1.5 text-sm font-medium text-[#5c5c5c]">
+                            Page <span class="paginated-current font-bold text-black">1</span> <span class="text-[#b0b0b0]">/</span> <span class="paginated-total font-bold text-black">1</span>
+                        </span>
+                        <button type="button" class="paginated-next inline-flex items-center gap-1.5 rounded-full border border-[#0067c0]/25 bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] shadow-sm transition hover:-translate-y-px hover:border-[#0067c0]/50 hover:bg-[#eaf4ff] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:hover:border-[#0067c0]/25 disabled:hover:bg-white" onclick="pageMove(this.closest('.phase-content'), 1)">
+                            Next <i data-lucide="chevron-right" class="h-4 w-4"></i>
+                        </button>
+                    </div>
                 </div>
             {% empty %}
                 <div class="rounded-xl border border-[#e0e0e0] bg-white p-10 text-center shadow-sm">
@@ -106,6 +117,31 @@
 <script>
     const tabs = document.querySelectorAll('.phase-tab');
     const contents = document.querySelectorAll('.phase-content');
+    const PER_PAGE = 6;
+
+    function showPage(contentEl, page) {
+        const items = contentEl.querySelectorAll('.paginated-item');
+        const bar = contentEl.querySelector('.paginated-bar');
+        if (!items.length) {
+            if (bar) bar.classList.add('hidden');
+            return;
+        }
+        const pageCount = Math.ceil(items.length / PER_PAGE);
+        page = Math.max(1, Math.min(page, pageCount));
+        items.forEach((item, i) => {
+            item.classList.toggle('hidden', i < (page - 1) * PER_PAGE || i >= page * PER_PAGE);
+        });
+        contentEl.querySelector('.paginated-current').textContent = page;
+        contentEl.querySelector('.paginated-total').textContent = pageCount;
+        contentEl.querySelector('.paginated-prev').disabled = page <= 1;
+        contentEl.querySelector('.paginated-next').disabled = page >= pageCount;
+        if (bar) bar.classList.remove('hidden');
+    }
+
+    function pageMove(contentEl, delta) {
+        const current = parseInt(contentEl.querySelector('.paginated-current').textContent, 10);
+        showPage(contentEl, current + delta);
+    }
 
     function switchPhase(el) {
         const id = el.dataset.phase;
@@ -115,7 +151,11 @@
         });
         el.classList.remove('text-[#5c5c5c]', 'border-transparent');
         el.classList.add('text-black', 'border-[#0067c0]');
-        contents.forEach(c => c.classList.toggle('hidden', c.dataset.phase !== id));
+        contents.forEach(c => {
+            const show = c.dataset.phase === id;
+            c.classList.toggle('hidden', !show);
+            if (show) showPage(c, 1);
+        });
     }
 
     if (tabs.length) switchPhase(tabs[0]);

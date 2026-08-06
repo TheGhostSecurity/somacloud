@@ -54,7 +54,7 @@ from .models import (
     StudentProfile,
     Tool,
 )
-from .orchestrator import _docker_api, auto_detect_resources, deploy_sandbox, expire_stale_sessions, get_sandbox_status, stop_sandbox, select_node, _node_usage
+from .orchestrator import _docker_api, auto_detect_resources, deploy_sandbox, expire_stale_sessions, get_sandbox_status, stop_sandbox, select_node, _node_usage, verify_node
 from .services import (
     enrolled_labs_for,
     lab_progress_for,
@@ -1388,6 +1388,22 @@ def node_health_all(request):
     return redirect("node_list")
 
 
+@login_required
+def node_verify(request, node_id):
+    if not _is_admin(request.user):
+        return JsonResponse({"error": "access denied"}, status=403)
+    node = get_object_or_404(DockerNode, pk=node_id)
+    results, all_passed = verify_node(node)
+    node.last_health_check = timezone.now()
+    if all_passed:
+        node.status = DockerNode.ACTIVE
+    else:
+        node.status = DockerNode.OFFLINE
+    node.save(update_fields=["status", "last_health_check"])
+    auto_detect_resources(node)
+    return JsonResponse({"results": results, "passed": all_passed})
+
+
 # ---------------------------------------------------------------------------
 # Node SSH Setup (Phase 2)
 # ---------------------------------------------------------------------------
@@ -1398,7 +1414,6 @@ def _build_setup_script(node, setup_token):
 
     ca_cert = ca.get_ca_cert_pem().decode()
     app_url = settings.APP_SERVER_URL.rstrip("/")
-    swarm_token_url = f"{app_url}/admin/nodes/{node.id}/ca/token/{setup_token}/"
     sign_url = f"{app_url}/admin/nodes/{node.id}/ca/sign/{setup_token}/"
     callback_url = f"{app_url}/admin/nodes/{node.id}/setup-complete/{setup_token}/"
 
@@ -1410,7 +1425,6 @@ NODE_IP="{node.public_ip}"
 PORT_START="{node.port_start}"
 PORT_END="{node.port_end}"
 SIGN_URL="{sign_url}"
-TOKEN_URL="{swarm_token_url}"
 CALLBACK_URL="{callback_url}"
 CA_CERT_PEM='{ca_cert}'
 
@@ -1471,11 +1485,12 @@ sudo openssl req -new -key server.key -out server.csr \
 
 echo "[3/7] Signing certificate with CA..."
 CSR=$(sudo cat server.csr)
+CSR_ONELINE=$(echo "$CSR" | tr '\\n' '~')
+printf '{{"csr": "%s"}}' "$CSR_ONELINE" > /tmp/csr_payload.json
 SIGNED_CERT=$(curl -sk -X POST "{sign_url}" \
     -H "Content-Type: application/json" \
-    -d "{{\"csr\": \"$(echo "$CSR" | tr '\\n' '~')}}")
-# Replace newlines
-SIGNED_CERT=$(echo "$SIGNED_CERT" | sed 's/~/\\n/g; s/^"//; s/"$//')
+    -d @/tmp/csr_payload.json)
+rm -f /tmp/csr_payload.json
 
 if [ -z "$SIGNED_CERT" ] || [ "$SIGNED_CERT" = "null" ]; then
     echo "ERROR: Certificate signing failed."
@@ -1490,7 +1505,12 @@ echo "Certificates installed."
 echo "[4/7] Configuring Docker daemon..."
 sudo tee /etc/docker/daemon.json > /dev/null <<DAEMON
 {{
-    "hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2376"]
+    "hosts": ["unix:///var/run/docker.sock", "tcp://0.0.0.0:2376"],
+    "tls": true,
+    "tlsverify": true,
+    "tlscacert": "/etc/docker/tls/ca.pem",
+    "tlscert": "/etc/docker/tls/server.crt",
+    "tlskey": "/etc/docker/tls/server.key"
 }}
 DAEMON
 
@@ -1606,7 +1626,7 @@ def node_setup(request, node_id):
 
         # Generate client cert for the app server to talk to this worker
         try:
-            ca.generate_client_cert(node.name)
+            ca.generate_client_cert(node.name, node_ip=node.public_ip)
         except Exception as exc:
             logger.warning("Client cert generation failed for %s: %s", node.name, exc)
 
@@ -1650,10 +1670,11 @@ def node_ca_sign(request, node_id, token):
         return JsonResponse({"error": "invalid or expired token"}, status=403)
 
     try:
+        from django.http import HttpResponse
         body = json.loads(request.body)
         csr_pem = body.get("csr", "").replace("~", "\n").encode()
-        signed_cert = ca.sign_csr(csr_pem)
-        return JsonResponse({"cert": signed_cert.decode()})
+        signed_cert = ca.sign_csr(csr_pem, node_ip=node.public_ip)
+        return HttpResponse(signed_cert.decode(), content_type="text/plain")
     except Exception as exc:
         logger.error("CSR signing failed for %s: %s", node.name, exc)
         return JsonResponse({"error": str(exc)}, status=400)
@@ -1690,7 +1711,11 @@ def node_setup_complete(request, node_id, token):
     node.setup_token = ""
     node.setup_token_expires = None
     node.last_health_check = timezone.now()
-    node.save(update_fields=["status", "setup_token", "setup_token_expires", "last_health_check"])
+    changed = ["status", "setup_token", "setup_token_expires", "last_health_check"]
+    if node.docker_host.startswith("http://"):
+        node.docker_host = node.docker_host.replace("http://", "https://", 1)
+        changed.append("docker_host")
+    node.save(update_fields=changed)
     logger.info("Node '%s' setup completed, marked active.", node.name)
     return JsonResponse({"status": "ok"})
 
