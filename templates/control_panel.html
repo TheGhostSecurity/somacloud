@@ -70,53 +70,6 @@
                 </div>
             </div>
 
-            <div class="mb-7 grid gap-3 lg:grid-cols-3">
-                <a class="flex items-center gap-4 rounded-xl border border-[#e0e0e0] bg-white px-5 py-4 shadow-sm hover:border-[#c8c8c8] hover:shadow-md" href="{% url 'instructor_live_monitor' %}">
-                    <span class="grid h-10 w-10 place-items-center rounded-lg bg-[#ecfdf3] text-[#107c41]">
-                        <i data-lucide="radio" class="h-5 w-5"></i>
-                    </span>
-                    <span>
-                        <span class="block font-semibold text-black">Live Monitor</span>
-                        <span class="block text-xs text-[#5c5c5c]">{{ session_stats.running }} active sandbox{{ session_stats.running|pluralize }}</span>
-                    </span>
-                </a>
-                <a class="flex items-center gap-4 rounded-xl border border-[#e0e0e0] bg-white px-5 py-4 shadow-sm hover:border-[#c8c8c8] hover:shadow-md" href="{% url 'instructor_dashboard' %}">
-                    <span class="grid h-10 w-10 place-items-center rounded-lg bg-[#eaf4ff] text-[#0067c0]">
-                        <i data-lucide="flask-conical" class="h-5 w-5"></i>
-                    </span>
-                    <span>
-                        <span class="block font-semibold text-black">Lab Management</span>
-                        <span class="block text-xs text-[#5c5c5c]">{{ lab_stats.total }} lab{{ lab_stats.total|pluralize }}, {{ resource_profile_count }} profiles</span>
-                    </span>
-                </a>
-                <a class="flex items-center gap-4 rounded-xl border border-[#e0e0e0] bg-white px-5 py-4 shadow-sm hover:border-[#c8c8c8] hover:shadow-md" href="{% url 'node_list' %}">
-                    <span class="grid h-10 w-10 place-items-center rounded-lg bg-[#ecfdf3] text-[#107c41]">
-                        <i data-lucide="hard-drive" class="h-5 w-5"></i>
-                    </span>
-                    <span>
-                        <span class="block font-semibold text-black">Docker Nodes</span>
-                        <span class="block text-xs text-[#5c5c5c]">{{ node_count }} node{{ node_count|pluralize }} registered</span>
-                    </span>
-                </a>
-            </div>
-
-            {% if hack_phases_data %}
-                <section class="mb-7 overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
-                    <div class="border-b border-[#ededed] px-5 py-4">
-                        <h2 class="font-semibold text-black">Hack Phases</h2>
-                        <p class="text-sm text-[#5c5c5c]">Labs distributed across penetration testing phases.</p>
-                    </div>
-                    <div class="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
-                        {% for phase in hack_phases_data %}
-                            <div class="rounded-lg border border-[#e0e0e0] bg-[#fafafa] p-4">
-                                <h3 class="font-semibold text-black">{{ phase.name }}</h3>
-                                <p class="mt-2 text-sm font-semibold text-[#0067c0]">{{ phase.count }} lab{{ phase.count|pluralize }}</p>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </section>
-            {% endif %}
-
             <div id="createUserModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
                 <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" onclick="document.getElementById('createUserModal').classList.add('hidden')"></div>
                 <div class="fixed inset-4 top-[10%] mx-auto max-w-lg overflow-y-auto rounded-xl border border-[#e7e7e7] bg-white shadow-2xl md:inset-x-auto md:w-full">
@@ -158,7 +111,7 @@
                         <p class="text-sm text-[#5c5c5c]">{{ managed_users|length }} account{{ managed_users|length|pluralize }} — manage roles, access, and accounts.</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <select id="role-filter" class="h-9 rounded-lg border border-[#c8c8c8] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#0067c0] focus:ring-2 focus:ring-[#b7d8ff]" onchange="filterUsers()">
+                        <select id="role-filter" class="h-9 rounded-lg border border-[#c8c8c8] bg-white px-3 text-sm text-[#1f1f1f] outline-none focus:border-[#0067c0] focus:ring-2 focus:ring-[#b7d8ff]">
                             <option value="">All roles</option>
                             <option value="Administrator">Administrator</option>
                             <option value="Instructor">Instructor</option>
@@ -232,27 +185,74 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="usersPagination" class="paginated-bar mt-2 hidden items-center justify-center gap-5 border-t border-[#ededed] px-6 py-5">
+                    <button type="button" class="paginated-prev inline-flex items-center gap-1.5 rounded-full border border-[#0067c0]/25 bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] shadow-sm transition hover:-translate-y-px hover:border-[#0067c0]/50 hover:bg-[#eaf4ff] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:hover:border-[#0067c0]/25 disabled:hover:bg-white">
+                        <i data-lucide="chevron-left" class="h-4 w-4"></i> Previous
+                    </button>
+                    <span class="rounded-full bg-[#f2f2f2] px-3.5 py-1.5 text-sm font-medium text-[#5c5c5c]">
+                        Page <span class="paginated-current font-bold text-black">1</span> <span class="text-[#b0b0b0]">/</span> <span class="paginated-total font-bold text-black">1</span>
+                    </span>
+                    <button type="button" class="paginated-next inline-flex items-center gap-1.5 rounded-full border border-[#0067c0]/25 bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] shadow-sm transition hover:-translate-y-px hover:border-[#0067c0]/50 hover:bg-[#eaf4ff] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:hover:border-[#0067c0]/25 disabled:hover:bg-white">
+                        Next <i data-lucide="chevron-right" class="h-4 w-4"></i>
+                    </button>
+                </div>
             </section>
         </section>
     </div>
 </div>
 
 <script>
-function filterUsers(searchVal) {
-    const input = document.getElementById('global-user-search');
-    const search = (searchVal ?? input.value ?? '').toLowerCase();
-    const clearBtn = document.getElementById('global-search-clear');
-    if (clearBtn) clearBtn.style.display = search ? '' : 'none';
-    const role = document.getElementById('role-filter').value.toLowerCase();
-    document.querySelectorAll('.user-row').forEach(function(row) {
-        const username = row.getAttribute('data-username');
-        const rowName = (row.querySelector('td:nth-child(2)')?.textContent || '').toLowerCase();
-        const rowEmail = (row.querySelector('td:nth-child(3)')?.textContent || '').toLowerCase();
-        const rowRole = row.getAttribute('data-role').toLowerCase();
-        const matchSearch = !search || username.includes(search) || rowName.includes(search) || rowEmail.includes(search);
-        const matchRole = !role || rowRole === role;
-        row.style.display = matchSearch && matchRole ? '' : 'none';
-    });
-}
+(function() {
+    var PER_PAGE = 6;
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.user-row'));
+    var bar = document.getElementById('usersPagination');
+    var roleFilter = document.getElementById('role-filter');
+    var currentPage = 1;
+
+    function visibleRows() {
+        var input = document.getElementById('global-user-search');
+        var search = (input ? input.value : '').toLowerCase();
+        var role = roleFilter ? roleFilter.value.toLowerCase() : '';
+        return rows.filter(function(row) {
+            var username = row.getAttribute('data-username');
+            var rowName = (row.querySelector('td:nth-child(2)') ? row.querySelector('td:nth-child(2)').textContent : '').toLowerCase();
+            var rowEmail = (row.querySelector('td:nth-child(3)') ? row.querySelector('td:nth-child(3)').textContent : '').toLowerCase();
+            var rowRole = row.getAttribute('data-role').toLowerCase();
+            var matchSearch = !search || username.includes(search) || rowName.includes(search) || rowEmail.includes(search);
+            var matchRole = !role || rowRole === role;
+            return matchSearch && matchRole;
+        });
+    }
+
+    function render() {
+        var visible = visibleRows();
+        if (!visible.length) { bar.classList.add('hidden'); return; }
+        var pages = Math.ceil(visible.length / PER_PAGE);
+        currentPage = Math.max(1, Math.min(currentPage, pages));
+        rows.forEach(function(row) { row.style.display = 'none'; });
+        visible.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE).forEach(function(row) {
+            row.style.display = '';
+        });
+        bar.querySelector('.paginated-current').textContent = currentPage;
+        bar.querySelector('.paginated-total').textContent = pages;
+        bar.querySelector('.paginated-prev').disabled = currentPage <= 1;
+        bar.querySelector('.paginated-next').disabled = currentPage >= pages;
+        bar.classList.remove('hidden');
+    }
+
+    function filterUsers() {
+        currentPage = 1;
+        render();
+        var input = document.getElementById('global-user-search');
+        var clearBtn = document.getElementById('global-search-clear');
+        if (input && clearBtn) clearBtn.style.display = input.value ? '' : 'none';
+    }
+    window.filterUsers = filterUsers;
+
+    if (roleFilter) roleFilter.addEventListener('change', filterUsers);
+    bar.querySelector('.paginated-prev').addEventListener('click', function() { currentPage--; render(); });
+    bar.querySelector('.paginated-next').addEventListener('click', function() { currentPage++; render(); });
+    render();
+})();
 </script>
 {% endblock %}
