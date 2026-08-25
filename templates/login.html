@@ -52,3 +52,29 @@
     </section>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('input[type="password"]').forEach(function(input) {
+    var wrap = document.createElement('div');
+    wrap.className = 'relative';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    input.className += ' pr-10';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'absolute right-3 top-1/2 -translate-y-1/2 text-[#5c5c5c] hover:text-[#002b3f]';
+    btn.innerHTML = '<i data-lucide="eye" class="h-4 w-4"></i>';
+    btn.addEventListener('click', function() {
+        var isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        btn.innerHTML = isPassword
+            ? '<i data-lucide="eye-off" class="h-4 w-4"></i>'
+            : '<i data-lucide="eye" class="h-4 w-4"></i>';
+        lucide.createIcons();
+    });
+    wrap.appendChild(btn);
+    lucide.createIcons();
+});
+</script>
+{% endblock %}
