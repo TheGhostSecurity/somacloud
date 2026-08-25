@@ -137,6 +137,7 @@ def _build_admin_context(current_user_id=None):
         "docker_ok": docker_ok,
         "container_count": container_count,
         "hack_phases_data": phases_data,
+        "hack_phases": HackPhase.objects.annotate(lab_count=Count("labs")).order_by("order", "name"),
         "resource_profile_count": ResourceProfile.objects.count(),
         "container_image_count": ContainerImage.objects.count(),
         "node_count": DockerNode.objects.count(),
