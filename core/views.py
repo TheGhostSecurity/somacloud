@@ -422,10 +422,8 @@ def student_recent_activity(request):
     )
 
 
-@login_required
-def student_analytics_view(request):
-    now = timezone.now()
-    user = request.user
+def _build_chart_data(user, now=None):
+    now = now or timezone.now()
     thirty_days_ago = now - timezone.timedelta(days=30)
 
     # Session activity by day (last 30 days)
@@ -452,7 +450,6 @@ def student_analytics_view(request):
     # Flag submission success rate (doughnut)
     total_flags = FlagSubmission.objects.filter(user=user).count()
     correct_flags = FlagSubmission.objects.filter(user=user, is_correct=True).count()
-    wrong_flags = total_flags - correct_flags
 
     # Login frequency by day of week (last 30 days)
     login_by_day = (
@@ -467,7 +464,6 @@ def student_analytics_view(request):
         django_dow = row["logged_in_at__week_day"]
         idx = (django_dow - 2) % 7
         login_chart_data[idx] = row["count"]
-    login_chart_labels = day_names
 
     # Sessions per lab (top 6)
     lab_sessions = (
@@ -490,6 +486,27 @@ def student_analytics_view(request):
     hourly_labels = [h["hour"].strftime("%H:00") for h in hourly_activity]
     hourly_data = [h["count"] for h in hourly_activity]
 
+    return {
+        "session_chart": {"labels": session_chart_labels, "data": session_chart_data},
+        "phase_chart": {"labels": phase_labels, "data": phase_data},
+        "flag_chart": {"labels": ["Correct", "Incorrect"], "data": [correct_flags, total_flags - correct_flags]},
+        "login_chart": {"labels": day_names, "data": login_chart_data},
+        "lab_session_chart": {"labels": lab_session_labels, "data": lab_session_data},
+        "hourly_chart": {"labels": hourly_labels, "data": hourly_data},
+    }
+
+
+@login_required
+def student_analytics_view(request):
+    now = timezone.now()
+    user = request.user
+
+    chart_data = _build_chart_data(user)
+
+    # Flag stats (used for the stat cards and accuracy)
+    total_flags = FlagSubmission.objects.filter(user=user).count()
+    correct_flags = FlagSubmission.objects.filter(user=user, is_correct=True).count()
+
     # Stats
     total_sessions = SandboxSession.objects.filter(user=user).count()
     total_sandbox_time = 0
@@ -508,15 +525,6 @@ def student_analytics_view(request):
             completed_count += 1
     enrolled_count = enrolled.count()
     overall_percent = round((completed_count / max(1, enrolled_count)) * 100)
-
-    chart_data = {
-        "session_chart": {"labels": session_chart_labels, "data": session_chart_data},
-        "phase_chart": {"labels": phase_labels, "data": phase_data},
-        "flag_chart": {"labels": ["Correct", "Incorrect"], "data": [correct_flags, wrong_flags]},
-        "login_chart": {"labels": login_chart_labels, "data": login_chart_data},
-        "lab_session_chart": {"labels": lab_session_labels, "data": lab_session_data},
-        "hourly_chart": {"labels": hourly_labels, "data": hourly_data},
-    }
 
     return render(
         request,
@@ -859,6 +867,8 @@ def instructor_student_analytics(request, user_id=None):
         })
     timeline.sort(key=lambda x: x["time"], reverse=True)
 
+    chart_data = _build_chart_data(student)
+
     return render(
         request,
         "instructor_student_analytics.html",
@@ -869,6 +879,7 @@ def instructor_student_analytics(request, user_id=None):
             "sessions": sessions,
             "progress": progress,
             "submissions": submissions,
+            "chart_data_json": json.dumps(chart_data),
             "total_labs": total_labs,
             "completed_labs": completed_labs,
             "total_sessions": total_sessions,

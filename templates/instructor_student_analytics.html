@@ -98,7 +98,7 @@
 
             <!-- Labs Status Tab -->
             <div id="tab-labs-status" class="analytics-panel">
-                <section class="rounded-xl border border-[#e0e0e0] bg-white shadow-sm">
+                <section class="rounded-xl border border-[#e0e0e0] bg-white shadow-sm" data-pagi data-pagi-size="8">
                     <div class="border-b border-[#e0e0e0] px-5 py-4">
                         <h2 class="font-semibold text-black">Lab Enrollment &amp; Progress</h2>
                         <p class="mt-1 text-xs text-[#5c5c5c]">Enrolled, in-progress, and completed labs for {{ student.username }}</p>
@@ -119,7 +119,7 @@
                             </thead>
                             <tbody class="divide-y divide-[#f0f0f0]">
                                 {% for ls in lab_statuses %}
-                                <tr class="hover:bg-[#fafafa]">
+                                <tr class="hover:bg-[#fafafa]" data-pagi-item>
                                     <td class="px-5 py-3">
                                         <a class="font-semibold text-black hover:text-[#0067c0]" href="{% url 'student_lab_detail' ls.lab.id %}">{{ ls.lab.title }}</a>
                                     </td>
@@ -170,17 +170,18 @@
                             </tbody>
                         </table>
                     </div>
+                    {% include "partials/_pagination_bar.html" %}
                 </section>
             </div>
 
             <div id="tab-timeline" class="analytics-panel hidden">
-                <section class="rounded-xl border border-[#e0e0e0] bg-white shadow-sm">
+                <section class="rounded-xl border border-[#e0e0e0] bg-white shadow-sm" data-pagi data-pagi-size="10">
                     <div class="border-b border-[#e0e0e0] px-5 py-4">
                         <h2 class="font-semibold text-black">Activity Timeline</h2>
                     </div>
                     <div class="divide-y divide-[#f0f0f0]">
                         {% for entry in timeline %}
-                        <div class="flex items-start gap-4 px-5 py-4">
+                        <div class="flex items-start gap-4 px-5 py-4" data-pagi-item>
                             <span class="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full {% if entry.type == 'session' %}bg-[#eaf4ff] text-[#0067c0]{% elif entry.type == 'progress' %}bg-[#ecfdf3] text-[#107c41]{% else %}bg-[#fff7ed] text-[#c43e1c]{% endif %}">
                                 <i data-lucide="{{ entry.icon }}" class="h-4 w-4"></i>
                             </span>
@@ -194,11 +195,12 @@
                         <div class="px-5 py-10 text-center text-sm text-[#5c5c5c]">No activity yet.</div>
                         {% endfor %}
                     </div>
+                    {% include "partials/_pagination_bar.html" %}
                 </section>
             </div>
 
             <div id="tab-sessions" class="analytics-panel hidden">
-                <section class="overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
+                <section class="overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm" data-pagi data-pagi-size="8">
                     <div class="overflow-x-auto">
                         <table class="w-full min-w-[600px] text-left text-sm">
                             <thead class="border-b border-[#ededed] text-[#424242]">
@@ -212,7 +214,7 @@
                             </thead>
                             <tbody class="divide-y divide-[#ededed]">
                                 {% for session in sessions %}
-                                <tr class="hover:bg-[#fafafa]">
+                                <tr class="hover:bg-[#fafafa]" data-pagi-item>
                                     <td class="px-6 py-4">
                                         <a class="font-semibold text-[#0067c0] hover:underline" href="{% url 'student_lab_detail' session.lab.id %}">{{ session.lab.title }}</a>
                                     </td>
@@ -245,11 +247,12 @@
                             </tbody>
                         </table>
                     </div>
+                    {% include "partials/_pagination_bar.html" %}
                 </section>
             </div>
 
             <div id="tab-submissions" class="analytics-panel hidden">
-                <section class="overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
+                <section class="overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm" data-pagi data-pagi-size="8">
                     <div class="overflow-x-auto">
                         <table class="w-full min-w-[600px] text-left text-sm">
                             <thead class="border-b border-[#ededed] text-[#424242]">
@@ -262,7 +265,7 @@
                             </thead>
                             <tbody class="divide-y divide-[#ededed]">
                                 {% for sub in submissions %}
-                                <tr class="hover:bg-[#fafafa]">
+                                <tr class="hover:bg-[#fafafa]" data-pagi-item>
                                     <td class="px-6 py-4 font-semibold text-black">{{ sub.lab.title }}</td>
                                     <td class="px-6 py-4 font-mono text-xs text-[#424242]">{{ sub.submitted_flag|truncatechars:50 }}</td>
                                     <td class="px-6 py-4">
@@ -282,11 +285,38 @@
                             </tbody>
                         </table>
                     </div>
+                    {% include "partials/_pagination_bar.html" %}
                 </section>
             </div>
 
             <div id="tab-graphs" class="analytics-panel hidden">
-                <div class="grid gap-6 lg:grid-cols-2">
+                <div class="grid gap-5 lg:grid-cols-2">
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Session Activity (30 days)</h3>
+                        <div class="relative" style="height:240px"><canvas id="chartSession"></canvas></div>
+                    </div>
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Labs by Phase</h3>
+                        <div class="relative mx-auto" style="height:240px;max-width:300px"><canvas id="chartPhase"></canvas></div>
+                    </div>
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Challenge Accuracy</h3>
+                        <div class="relative mx-auto" style="height:240px;max-width:300px"><canvas id="chartFlags"></canvas></div>
+                    </div>
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Logins by Day of Week</h3>
+                        <div class="relative" style="height:240px"><canvas id="chartLogin"></canvas></div>
+                    </div>
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Most Used Labs</h3>
+                        <div class="relative" style="height:240px"><canvas id="chartLabUse"></canvas></div>
+                    </div>
+                    <div class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+                        <h3 class="mb-3 text-sm font-semibold text-[#424242]">Activity by Hour of Day</h3>
+                        <div class="relative" style="height:240px"><canvas id="chartHourly"></canvas></div>
+                    </div>
+                </div>
+                <div class="mt-6 grid gap-6 lg:grid-cols-2">
                     <section class="rounded-xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
                         <h2 class="mb-4 font-semibold text-black">Progress Overview</h2>
                         <div class="flex items-center justify-center">
@@ -306,6 +336,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
 (function() {
     var tabs = document.querySelectorAll('.analytics-tab');
@@ -328,9 +359,125 @@
             Object.keys(panels).forEach(function(key) {
                 if (panels[key]) panels[key].classList.add('hidden');
             });
-            if (panels[target]) panels[target].classList.remove('hidden');
+            if (panels[target]) {
+                panels[target].classList.remove('hidden');
+                if (target === 'graphs') setTimeout(initCharts, 60);
+            }
         });
     });
+
+    /* ── Pagination for the four data panels ── */
+    function wirePagination(root) {
+        var per = parseInt(root.getAttribute('data-pagi-size'), 10) || 8;
+        var items = Array.prototype.slice.call(root.querySelectorAll('[data-pagi-item]'));
+        var bar = root.querySelector('.pagi-bar');
+        if (!bar || !items.length) {
+            if (bar) bar.classList.add('hidden');
+            return;
+        }
+        var current = 1;
+        function render() {
+            var pages = Math.max(1, Math.ceil(items.length / per));
+            current = Math.min(current, pages);
+            items.forEach(function(el, i) {
+                el.style.display = (i >= (current - 1) * per && i < current * per) ? '' : 'none';
+            });
+            bar.querySelector('.pagi-current').textContent = current;
+            bar.querySelector('.pagi-total').textContent = pages;
+            bar.querySelector('.pagi-prev').disabled = current <= 1;
+            bar.querySelector('.pagi-next').disabled = current >= pages;
+            bar.classList.toggle('hidden', items.length <= per);
+        }
+        bar.querySelector('.pagi-prev').addEventListener('click', function() {
+            if (current > 1) { current--; render(); }
+        });
+        bar.querySelector('.pagi-next').addEventListener('click', function() {
+            if (current < Math.ceil(items.length / per)) { current++; render(); }
+        });
+        render();
+    }
+    document.querySelectorAll('[data-pagi]').forEach(wirePagination);
+
+    /* ── Charts (same as student "My Analytics") ── */
+    var chartsInited = false;
+    function initCharts() {
+        if (chartsInited || !window.Chart) return;
+        chartsInited = true;
+        var D = {{ chart_data_json|safe }};
+        var blue = '#0067c0', green = '#107c41', amber = '#d99322', red = '#dc2626', purple = '#7c3aed', slate = '#64748b';
+        var blueBg = blue + '22';
+
+        var chartOpts = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+                y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, stepSize: 1 }, beginAtZero: true }
+            }
+        };
+        var doughnutOpts = {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } }
+        };
+        function canvas(id) { return document.getElementById(id); }
+
+        if (D.session_chart.data.length) {
+            new Chart(canvas('chartSession'), {
+                type: 'line',
+                data: {
+                    labels: D.session_chart.labels,
+                    datasets: [{ data: D.session_chart.data, borderColor: blue, backgroundColor: blueBg, fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: blue, borderWidth: 2 }]
+                },
+                options: chartOpts
+            });
+        }
+        if (D.phase_chart.data.length) {
+            var phaseColors = ['#0067c0', '#107c41', '#d99322', '#dc2626', '#7c3aed', '#0891b2', '#e11d48'];
+            new Chart(canvas('chartPhase'), {
+                type: 'doughnut',
+                data: { labels: D.phase_chart.labels, datasets: [{ data: D.phase_chart.data, backgroundColor: phaseColors.slice(0, D.phase_chart.data.length), borderWidth: 2, borderColor: '#fff' }] },
+                options: doughnutOpts
+            });
+        }
+        new Chart(canvas('chartFlags'), {
+            type: 'doughnut',
+            data: { labels: D.flag_chart.labels, datasets: [{ data: D.flag_chart.data, backgroundColor: [green, red], borderWidth: 2, borderColor: '#fff' }] },
+            options: doughnutOpts
+        });
+        if (D.login_chart.data.length) {
+            new Chart(canvas('chartLogin'), {
+                type: 'bar',
+                data: { labels: D.login_chart.labels, datasets: [{ data: D.login_chart.data, backgroundColor: blue, borderRadius: 6, barThickness: 28 }] },
+                options: chartOpts
+            });
+        }
+        if (D.lab_session_chart.data.length) {
+            new Chart(canvas('chartLabUse'), {
+                type: 'bar',
+                data: { labels: D.lab_session_chart.labels, datasets: [{ data: D.lab_session_chart.data, backgroundColor: [blue, green, amber, purple, slate, red], borderRadius: 6 }] },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 10 }, stepSize: 1 }, beginAtZero: true },
+                        y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+        if (D.hourly_chart.data.length) {
+            new Chart(canvas('chartHourly'), {
+                type: 'bar',
+                data: { labels: D.hourly_chart.labels, datasets: [{ data: D.hourly_chart.data, backgroundColor: purple + 'cc', borderRadius: 4 }] },
+                options: chartOpts
+            });
+        }
+    }
 })();
 </script>
 {% endblock %}
