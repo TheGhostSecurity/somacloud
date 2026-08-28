@@ -1,0 +1,9 @@
+Welcome to the Globex file share.
+
+IT consolidated all internal documentation here. The restricted
+IT-Department share holds the current credential bundles — open a
+ticket with Operations (bsmith@globex.local) for access.
+
+- Public: policy docs and general notices
+- IT-Department: restricted (authorised staff only)
+- backup: legacy archives

@@ -1,0 +1,2 @@
+This is a placeholder bundle so the backup directory listing looks real.
+See /backup/globex-intranet-bundle-2025.11.tar.gz for the archived snapshot.

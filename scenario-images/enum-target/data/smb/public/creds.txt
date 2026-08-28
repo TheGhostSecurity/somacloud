@@ -1,0 +1,5 @@
+Current credential rotation bundle:
+  username: globex
+  password: Globex@2026
+
+Use these for the IT-Department share. Do not share outside the team.

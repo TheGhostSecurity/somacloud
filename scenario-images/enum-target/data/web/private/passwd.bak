@@ -1,0 +1,6 @@
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bsmith:x:1000:1000:Bob Smith:/home/bsmith:/bin/bash
+jtaylor:x:1001:1001:Jane Taylor:/home/jtaylor:/bin/bash
+jdoe:x:1002:1002:John Doe:/home/jdoe:/bin/bash
+svc_http:x:1003:1003:HTTP Service:/srv/www:/usr/sbin/nologin

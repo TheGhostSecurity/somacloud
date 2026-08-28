@@ -1,0 +1,4 @@
+ftp note to self:
+- anonymous users only get the drop directory
+- default creds for IT-Department are on the SMB public share
+- rotate SMB creds monthly per policy #SEC-014

@@ -1,0 +1,81 @@
+dn: dc=globex,dc=local
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: Globex Corporation
+dc: globex
+
+dn: ou=People,dc=globex,dc=local
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Groups,dc=globex,dc=local
+objectClass: organizationalUnit
+ou: Groups
+
+dn: cn=Bob Smith,ou=People,dc=globex,dc=local
+objectClass: inetOrgPerson
+uid: bsmith
+cn: Bob Smith
+sn: Smith
+givenName: Bob
+displayName: Bob Smith
+mail: bsmith@globex.local
+title: Senior Systems Administrator
+employeeType: Administrator
+description: Operations Administrator - holder of the IT-Department SMB credential bundle
+userPassword: Operations@2026
+
+dn: cn=Jane Taylor,ou=People,dc=globex,dc=local
+objectClass: inetOrgPerson
+uid: jtaylor
+cn: Jane Taylor
+sn: Taylor
+givenName: Jane
+displayName: Jane Taylor
+mail: jtaylor@globex.local
+title: Finance Manager
+employeeType: Staff
+userPassword: Finance@2026
+
+
+
+dn: cn=John Doe,ou=People,dc=globex,dc=local
+objectClass: inetOrgPerson
+uid: jdoe
+cn: John Doe
+sn: Doe
+givenName: John
+displayName: John Doe
+mail: jdoe@globex.local
+title: Marketing Lead
+employeeType: Staff
+userPassword: Marketing@2026
+
+
+
+dn: cn=HTTP Service,ou=People,dc=globex,dc=local
+objectClass: inetOrgPerson
+uid: svc_http
+cn: HTTP Service
+sn: HTTP
+displayName: HTTP Service
+mail: svc_http@globex.local
+title: Service Account
+employeeType: Service
+description: HTTP service principal - Kerberos principal svc_http@GLOBEX.LOCAL
+userPassword: Svc@P@ss2026
+
+
+
+dn: cn=IT-Admins,ou=Groups,dc=globex,dc=local
+objectClass: groupOfNames
+cn: IT-Admins
+member: cn=Bob Smith,ou=People,dc=globex,dc=local
+
+dn: cn=Staff,ou=Groups,dc=globex,dc=local
+objectClass: groupOfNames
+cn: Staff
+member: cn=Bob Smith,ou=People,dc=globex,dc=local
+member: cn=Jane Taylor,ou=People,dc=globex,dc=local
+member: cn=John Doe,ou=People,dc=globex,dc=local

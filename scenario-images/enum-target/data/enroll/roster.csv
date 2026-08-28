@@ -1,0 +1,6 @@
+employee_id,name,username,email,department,office
+1001,Bob Smith,bsmith,bsmith@globex.local,Operations,Desk-3F-12
+1002,Janet Taylor,jtaylor,jtaylor@globex.local,Finance,Desk-4F-08
+1003,Julie Doe,jdoe,jdoe@globex.local,Marketing,Desk-2F-21
+1004,Globex Service,globex,globex@globex.local,IT,ServerRoom-A
+1005,HTTP Service Account,svc_http,svc_http@globex.local,IT,ServerRoom-A

@@ -1,0 +1,15 @@
+Globex file server audit - internal draft
+==========================================
+Owner: IT Operations (bsmith)
+Date: 2026-03-17
+
+Summary of SMB share permissions review:
+
+ * public        - anonymous read (outbox style, safe to leave open)
+ * backup        - anonymous read; legacy bundles only (retention 365d)
+ * IT-Department - restricted to authenticated domain users only.
+                   contains the on-prem data-sync rotation notes.
+
+Recommendation: move the IT-Department share behind Kerberos auth once
+the KDC service account (svc_http) is validated. LDAP attribute
+"description" on svc_http should be scrubbed before external review.
