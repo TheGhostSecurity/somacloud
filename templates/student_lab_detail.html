@@ -88,11 +88,9 @@
                                 <div class="flex items-center gap-1">
                                     <button class="flex h-6 w-6 items-center justify-center rounded border border-[#d0d0d0] text-xs font-bold text-[#5c5c5c] hover:bg-[#f2f2f2]" onclick="fontSizeChange(-1)" title="Decrease font size" type="button">−</button>
                                     <button class="flex h-6 w-6 items-center justify-center rounded border border-[#d0d0d0] text-xs font-bold text-[#5c5c5c] hover:bg-[#f2f2f2]" onclick="fontSizeChange(1)" title="Increase font size" type="button">+</button>
-                                    <button id="skipTypewriter" class="ml-1 hidden rounded bg-[#0067c0] px-2 py-1 text-[10px] font-semibold text-white hover:bg-[#005a9e]" type="button">Skip</button>
-                                </div>
+                                    </div>
                             </div>
                             <div class="flex items-center gap-2">
-                                <span id="typewriterCursor" class="inline-block h-4 w-[2px] bg-[#0067c0] animate-pulse" style="display:none"></span>
                                 {% for s in progress.stages %}{% if s.stage == "theory" and s.completed %}
                                     <span class="rounded-full bg-[#ecfdf3] px-3 py-1 text-xs font-semibold text-[#107c41]">Complete</span>
                                 {% endif %}{% endfor %}
@@ -237,52 +235,12 @@
 
 {% block extra_js %}
 <style>
-.theory-reveal { opacity:0; transform:translateY(12px); transition:opacity .5s ease, transform .5s ease; }
-.theory-reveal.revealed { opacity:1; transform:translateY(0); }
 .terminal-block pre { margin:0 !important; border-radius:0 0 8px 8px !important; }
 </style>
 <script>
 (function(){
     const content = document.getElementById('theoryContent');
     if (!content || !content.children.length) return;
-
-    /* ── 1. Progressive reveal ── */
-    const items = Array.from(content.children);
-    const skipBtn = document.getElementById('skipTypewriter');
-    const cursor = document.getElementById('typewriterCursor');
-    let idx = 0;
-    let skipped = false;
-
-    items.forEach(el => el.classList.add('theory-reveal'));
-    cursor.style.display = 'inline-block';
-
-    function revealNext() {
-        if (skipped || idx >= items.length) {
-            if (idx >= items.length) cursor.style.display = 'none';
-            if (skipBtn) skipBtn.classList.add('hidden');
-            return;
-        }
-        items[idx].classList.add('revealed');
-        idx++;
-        if (idx < items.length) {
-            setTimeout(revealNext, 400);
-        } else {
-            cursor.style.display = 'none';
-            if (skipBtn) skipBtn.classList.add('hidden');
-        }
-    }
-
-    if (skipBtn) {
-        skipBtn.classList.remove('hidden');
-        skipBtn.addEventListener('click', () => {
-            skipped = true;
-            items.forEach(el => el.classList.add('revealed'));
-            cursor.style.display = 'none';
-            skipBtn.classList.add('hidden');
-        });
-    }
-
-    setTimeout(revealNext, 600);
 
     /* ── 2. Reading progress bar ── */
     const progressBar = document.getElementById('readingProgress');
@@ -348,25 +306,6 @@
         wrapper.appendChild(header);
         wrapper.appendChild(pre);
     });
-
-    /* ── 4. Scroll reveal for headings (scrollytelling) ── */
-    if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, {threshold: 0.2});
-        content.querySelectorAll('h2, h3, h4, img, table').forEach(el => {
-            el.style.opacity = '0';
-            el.style.transform = 'translateY(20px)';
-            el.style.transition = 'opacity .6s ease, transform .6s ease';
-            observer.observe(el);
-        });
-    }
 
     /* ── 5. Inline tip popovers ── */
     content.querySelectorAll('.inline-tip').forEach(tip => {

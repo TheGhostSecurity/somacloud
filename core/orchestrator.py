@@ -412,6 +412,12 @@ def verify_node(node):
 # Deploy / Stop / Status
 # ---------------------------------------------------------------------------
 
+def _service_env(session, service):
+    if "botnet-agent" in service.image.lower():
+        return {"TARGET_HOST": f"somacloud-t{session.id}", "BOT_ID": f"bot-{session.id}"}
+    return {}
+
+
 def deploy_sandbox(session):
     """Pick a node, pull images, and run the sandbox containers on it."""
 
@@ -456,7 +462,8 @@ def deploy_sandbox(session):
     for index, service in enumerate(services, start=1):
         result = _create_container(
             service.image, f"somacloud-s{session.id}-{index}", network, profile,
-            ports[index], service.container_port, command=service.command, node=node,
+            ports[index], service.container_port, command=service.command,
+            env=_service_env(session, service) or None, node=node,
         )
         if not result:
             return _fail(session, created_ids, network, node=node)

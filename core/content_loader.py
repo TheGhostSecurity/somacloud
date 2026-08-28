@@ -99,6 +99,47 @@ def load_simple_yaml(path):
     return data
 
 
+def _table_split(line):
+    s = line.strip()
+    if s.startswith("|"):
+        s = s[1:]
+    if s.endswith("|"):
+        s = s[:-1]
+    return [cell.strip() for cell in s.split("|")]
+
+
+def _is_table_separator(cells):
+    return bool(cells) and all(re.fullmatch(r":?-{1,}:?", cell) for cell in cells)
+
+
+def _render_table(rows):
+    split = [_table_split(row) for row in rows]
+    header = None
+    body = split
+    if len(split) >= 2 and _is_table_separator(split[1]):
+        header = split[0]
+        body = split[2:]
+    cols = max(len(row) for row in split) if split else 0
+
+    def cell(value, tag):
+        value = inline_format(value or "")
+        styles = {
+            "th": "border border-[#dbe6f2] bg-[#eef4fb] px-3 py-2 font-semibold text-[#0b3556]",
+            "td": "border border-[#e6ecf5] px-3 py-2 text-[#37445c]",
+        }
+        return format_html("<{tag} class='{cls}'>{value}</{tag}>", tag=tag, cls=styles[tag], value=value)
+
+    html = "<div class='overflow-x-auto my-3'><table class='w-full border-collapse text-left text-sm'>"
+    if header:
+        html += "<thead><tr>" + "".join(cell(c, "th") for c in header[:cols]) + "</tr></thead>"
+    html += "<tbody>"
+    for row in body:
+        fill = [cell(c, "td") for c in row] + [cell("", "td")] * max(0, cols - len(row))
+        html += "<tr class='odd:bg-[#fbfcff]'>" + "".join(fill) + "</tr>"
+    html += "</tbody></table></div>"
+    return mark_safe(html)
+
+
 def render_markdown(raw):
     lines = raw.splitlines()
     html_parts = []
@@ -111,7 +152,10 @@ def render_markdown(raw):
             html_parts.append(format_html("<ul class='list-disc space-y-1 pl-5'>{}</ul>", format_html_join("", "<li>{}</li>", ((item,) for item in list_items))))
             list_items.clear()
 
-    for line in lines:
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        i += 1
         stripped = line.strip()
         if stripped.startswith("```"):
             if in_code:
@@ -126,6 +170,18 @@ def render_markdown(raw):
         if in_code:
             code_lines.append(line)
             continue
+
+        if stripped.startswith("|"):
+            group = [line]
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                group.append(lines[i])
+                i += 1
+            split = [_table_split(row) for row in group]
+            is_table = len(split) >= 2 and _is_table_separator(split[1])
+            if is_table:
+                flush_list()
+                html_parts.append(_render_table(group))
+                continue
 
         if not stripped:
             flush_list()

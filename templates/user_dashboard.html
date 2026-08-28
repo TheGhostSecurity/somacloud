@@ -47,6 +47,101 @@
                 </a>
             </div>
 
+            <!-- Enrolled labs table -->
+            <section class="mb-7 overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#ededed] px-6 py-4">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <h2 class="text-base font-semibold text-[#424242]">Enrolled labs</h2>
+                        <select id="phaseFilter" class="rounded-md border border-[#e0e0e0] bg-white px-3 py-1.5 text-xs font-medium text-[#424242]">
+                            <option value="">All phases</option>
+                            {% for phase in phases %}
+                                <option value="{{ phase.id }}">{{ phase.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <a class="text-sm font-semibold text-[#0067c0] hover:underline" href="{% url 'student_labs' %}">See all available labs</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table id="enrolledTable" class="w-full min-w-[700px] text-left text-sm">
+                        <thead class="border-b border-[#ededed] text-[#424242]">
+                            <tr>
+                                <th class="px-6 py-3 font-semibold">Lab</th>
+                                <th class="px-6 py-3 font-semibold">Phase</th>
+                                <th class="px-6 py-3 font-semibold">Resource</th>
+                                <th class="px-6 py-3 font-semibold">Progress</th>
+                                <th class="px-6 py-3 font-semibold">Status</th>
+                                <th class="px-6 py-3 font-semibold"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#ededed]">
+                            {% for ew in enrolled_with_progress %}
+                                {% with lab=ew.enrollment.lab progress=ew.progress %}
+                                    <tr class="lab-row hover:bg-[#fafafa]" data-phase="{{ lab.hack_phase.id }}" data-name="{{ lab.title|lower }}">
+                                        <td class="px-6 py-4">
+                                            <a class="font-semibold text-black hover:text-[#0067c0]" href="{% url 'student_lab_detail' lab.id %}">{{ lab.title }}</a>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="inline-flex items-center gap-1.5 rounded-full bg-[#eaf4ff] px-2.5 py-0.5 text-xs font-semibold text-[#0067c0]">
+                                                <i data-lucide="layers" class="h-3 w-3"></i>
+                                                {{ lab.hack_phase.name }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-xs text-[#5c5c5c]">{{ lab.resource_profile.name }}</td>
+                                        <td class="px-6 py-4">
+                                            {% if progress.stages %}
+                                                <div class="flex items-center gap-2">
+                                                    <div class="h-1.5 w-20 overflow-hidden rounded-full bg-[#e5e7eb]">
+                                                        <div class="h-full rounded-full bg-[#107c41] transition-all duration-500" style="width: {{ progress.percent }}%"></div>
+                                                    </div>
+                                                    <span class="text-xs font-medium text-[#424242]">{{ progress.percent }}%</span>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-xs text-[#8c8c8c]">&mdash;</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            {% if progress.is_complete %}
+                                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-[#107c41]">
+                                                    <i data-lucide="check-circle" class="h-3.5 w-3.5"></i> Complete
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-[#c43e1c]">
+                                                    <i data-lucide="play-circle" class="h-3.5 w-3.5"></i> In progress
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <a class="inline-flex items-center gap-1 rounded-md bg-[#0067c0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_lab_detail' lab.id %}">
+                                                Open <i data-lucide="arrow-right" class="h-3 w-3"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endwith %}
+                            {% empty %}
+                                <tr>
+                                    <td class="px-6 py-10 text-center text-[#5c5c5c]" colspan="6">
+                                        <i data-lucide="book-open" class="mx-auto mb-2 h-8 w-8"></i>
+                                        <p>No enrolled labs yet.</p>
+                                        <a class="mt-2 inline-block text-sm font-semibold text-[#0067c0] hover:underline" href="{% url 'student_labs' %}">Browse labs</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div id="enrolledPagination" class="paginated-bar mt-2 hidden items-center justify-center gap-5 border-t border-[#ededed] px-6 py-5">
+                    <button type="button" class="paginated-prev inline-flex items-center gap-1.5 rounded-full border border-[#0067c0]/25 bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] shadow-sm transition hover:-translate-y-px hover:border-[#0067c0]/50 hover:bg-[#eaf4ff] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:hover:border-[#0067c0]/25 disabled:hover:bg-white">
+                        <i data-lucide="chevron-left" class="h-4 w-4"></i> Previous
+                    </button>
+                    <span class="rounded-full bg-[#f2f2f2] px-3.5 py-1.5 text-sm font-medium text-[#5c5c5c]">
+                        Page <span class="paginated-current font-bold text-black">1</span> <span class="text-[#b0b0b0]">/</span> <span class="paginated-total font-bold text-black">1</span>
+                    </span>
+                    <button type="button" class="paginated-next inline-flex items-center gap-1.5 rounded-full border border-[#0067c0]/25 bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] shadow-sm transition hover:-translate-y-px hover:border-[#0067c0]/50 hover:bg-[#eaf4ff] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:hover:border-[#0067c0]/25 disabled:hover:bg-white">
+                        Next <i data-lucide="chevron-right" class="h-4 w-4"></i>
+                    </button>
+                </div>
+            </section>
+
             <!-- 6 stat cards -->
             <div class="mb-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <div class="stat-card rounded-xl border border-[#e0e0e0] bg-white p-4 shadow-sm">
@@ -175,100 +270,6 @@
                 </section>
             {% endif %}
 
-            <!-- Enrolled labs table -->
-            <section class="mb-7 overflow-hidden rounded-xl border border-[#e7e7e7] bg-white shadow-sm">
-                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#ededed] px-6 py-4">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <h2 class="text-base font-semibold text-[#424242]">Enrolled labs</h2>
-                        <select id="phaseFilter" class="rounded-md border border-[#e0e0e0] bg-white px-3 py-1.5 text-xs font-medium text-[#424242]">
-                            <option value="">All phases</option>
-                            {% for phase in phases %}
-                                <option value="{{ phase.id }}">{{ phase.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <a class="text-sm font-semibold text-[#0067c0] hover:underline" href="{% url 'student_labs' %}">See all available labs</a>
-                </div>
-                <div class="overflow-x-auto">
-                    <table id="enrolledTable" class="w-full min-w-[700px] text-left text-sm">
-                        <thead class="border-b border-[#ededed] text-[#424242]">
-                            <tr>
-                                <th class="px-6 py-3 font-semibold">Lab</th>
-                                <th class="px-6 py-3 font-semibold">Phase</th>
-                                <th class="px-6 py-3 font-semibold">Resource</th>
-                                <th class="px-6 py-3 font-semibold">Progress</th>
-                                <th class="px-6 py-3 font-semibold">Status</th>
-                                <th class="px-6 py-3 font-semibold"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-[#ededed]">
-                            {% for ew in enrolled_with_progress %}
-                                {% with lab=ew.enrollment.lab progress=ew.progress %}
-                                    <tr class="lab-row hover:bg-[#fafafa]" data-phase="{{ lab.hack_phase.id }}" data-name="{{ lab.title|lower }}">
-                                        <td class="px-6 py-4">
-                                            <a class="font-semibold text-black hover:text-[#0067c0]" href="{% url 'student_lab_detail' lab.id %}">{{ lab.title }}</a>
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            <span class="inline-flex items-center gap-1.5 rounded-full bg-[#eaf4ff] px-2.5 py-0.5 text-xs font-semibold text-[#0067c0]">
-                                                <i data-lucide="layers" class="h-3 w-3"></i>
-                                                {{ lab.hack_phase.name }}
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 text-xs text-[#5c5c5c]">{{ lab.resource_profile.name }}</td>
-                                        <td class="px-6 py-4">
-                                            {% if progress.stages %}
-                                                <div class="flex items-center gap-2">
-                                                    <div class="h-1.5 w-20 overflow-hidden rounded-full bg-[#e5e7eb]">
-                                                        <div class="h-full rounded-full bg-[#107c41] transition-all duration-500" style="width: {{ progress.percent }}%"></div>
-                                                    </div>
-                                                    <span class="text-xs font-medium text-[#424242]">{{ progress.percent }}%</span>
-                                                </div>
-                                            {% else %}
-                                                <span class="text-xs text-[#8c8c8c]">&mdash;</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            {% if progress.is_complete %}
-                                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-[#107c41]">
-                                                    <i data-lucide="check-circle" class="h-3.5 w-3.5"></i> Complete
-                                                </span>
-                                            {% else %}
-                                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-[#c43e1c]">
-                                                    <i data-lucide="play-circle" class="h-3.5 w-3.5"></i> In progress
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            <a class="inline-flex items-center gap-1 rounded-md bg-[#0067c0] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#005a9e]" href="{% url 'student_lab_detail' lab.id %}">
-                                                Open <i data-lucide="arrow-right" class="h-3 w-3"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                {% endwith %}
-                            {% empty %}
-                                <tr>
-                                    <td class="px-6 py-10 text-center text-[#5c5c5c]" colspan="6">
-                                        <i data-lucide="book-open" class="mx-auto mb-2 h-8 w-8"></i>
-                                        <p>No enrolled labs yet.</p>
-                                        <a class="mt-2 inline-block text-sm font-semibold text-[#0067c0] hover:underline" href="{% url 'student_labs' %}">Browse labs</a>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                <div id="enrolledPagination" class="paginated-bar mt-2 hidden items-center justify-center gap-5 border-t border-[#ededed] px-6 py-5">
-                    <button type="button" class="paginated-prev inline-flex items-center gap-1.5 rounded-full border border-[#0067c0]/25 bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] shadow-sm transition hover:-translate-y-px hover:border-[#0067c0]/50 hover:bg-[#eaf4ff] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:hover:border-[#0067c0]/25 disabled:hover:bg-white">
-                        <i data-lucide="chevron-left" class="h-4 w-4"></i> Previous
-                    </button>
-                    <span class="rounded-full bg-[#f2f2f2] px-3.5 py-1.5 text-sm font-medium text-[#5c5c5c]">
-                        Page <span class="paginated-current font-bold text-black">1</span> <span class="text-[#b0b0b0]">/</span> <span class="paginated-total font-bold text-black">1</span>
-                    </span>
-                    <button type="button" class="paginated-next inline-flex items-center gap-1.5 rounded-full border border-[#0067c0]/25 bg-white px-4 py-2 text-sm font-semibold text-[#0067c0] shadow-sm transition hover:-translate-y-px hover:border-[#0067c0]/50 hover:bg-[#eaf4ff] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-40 disabled:hover:border-[#0067c0]/25 disabled:hover:bg-white">
-                        Next <i data-lucide="chevron-right" class="h-4 w-4"></i>
-                    </button>
-                </div>
-            </section>
         </section>
     </div>
 </div>
