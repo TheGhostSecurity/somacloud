@@ -114,6 +114,7 @@ class Lab(models.Model):
     order = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    published_at = models.DateTimeField(null=True, blank=True, help_text="When the lab was most recently published.")
 
     class Meta:
         ordering = ["hack_phase__order", "order", "title"]

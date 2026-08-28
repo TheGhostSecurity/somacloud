@@ -188,7 +188,13 @@
                     });
                     bar.querySelector('.paginated-prev').addEventListener('click', function() { currentPage--; render(); });
                     bar.querySelector('.paginated-next').addEventListener('click', function() { currentPage++; render(); });
-                    if (tabs.length) selectTab(tabs[0]);
+                    var preset = new URLSearchParams(window.location.search).get('phase');
+                    if (preset) {
+                        var presetTab = tabs.find(function(t) { return t.dataset.phase === preset; });
+                        if (presetTab) selectTab(presetTab);
+                    } else if (tabs.length) {
+                        selectTab(tabs[0]);
+                    }
 
                     window.filterByPhase = function(phaseId) {
                         tabs.forEach(function(t) {

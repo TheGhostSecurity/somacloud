@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Count, Q, ProtectedError
+from django.db.models import Count, Prefetch, Q, ProtectedError
 from django.db.models.functions import TruncDay, TruncHour
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -574,7 +574,7 @@ def instructor_dashboard(request):
         request,
         "instructor_dashboard.html",
         {
-            "active_nav": "dashboard",
+            "active_nav": "labs",
             "user_role_label": "Instructor",
             "support_email": "support@somacloud.local",
             "labs": labs,
@@ -584,6 +584,39 @@ def instructor_dashboard(request):
             "hack_phases": HackPhase.objects.all(),
             "resource_profiles": ResourceProfile.objects.all(),
             "active_sessions_total": active_sessions_total,
+        },
+    )
+
+
+@login_required
+@user_passes_test(_is_instructor)
+def instructor_overview(request):
+    total_labs = Lab.objects.count()
+    published_labs = Lab.objects.filter(is_published=True).count()
+    total_enrollments = LabEnrollment.objects.filter(is_active=True).count()
+    total_students = User.objects.exclude(is_staff=True).exclude(groups__name__iexact="Instructor").count()
+    total_active = SandboxSession.objects.filter(status=SandboxSession.RUNNING).count()
+
+    recent_labs = (
+        Lab.objects.filter(is_published=True)
+        .select_related("hack_phase", "resource_profile")
+        .order_by("-published_at", "-created_at")[:3]
+    )
+
+    return render(
+        request,
+        "instructor_overview.html",
+        {
+            "active_nav": "dashboard",
+            "user_role_label": "Instructor",
+            "total_labs": total_labs,
+            "published_labs": published_labs,
+            "draft_labs": total_labs - published_labs,
+            "total_students": total_students,
+            "total_enrollments": total_enrollments,
+            "active_sessions_total": total_active,
+            "hack_phases": HackPhase.objects.all(),
+            "recent_labs": recent_labs,
         },
     )
 
@@ -666,6 +699,8 @@ def instructor_lab_create(request):
         if form.is_valid():
             lab = form.save(commit=False)
             lab.instructor = request.user
+            if lab.is_published and not lab.published_at:
+                lab.published_at = timezone.now()
             lab.save()
             form.save_m2m()
             messages.success(request, f"Lab '{lab.title}' created successfully.")
@@ -695,6 +730,10 @@ def instructor_lab_edit(request, lab_id):
         form = LabForm(request.POST, instance=lab)
         if form.is_valid():
             form.save()
+            lab.refresh_from_db()
+            if lab.is_published and not lab.published_at:
+                lab.published_at = timezone.now()
+                lab.save(update_fields=["published_at"])
             messages.success(request, f"Lab '{lab.title}' updated.")
             return redirect("instructor_dashboard")
     else:
@@ -937,7 +976,9 @@ def instructor_lab_toggle(request, lab_id):
     else:
         lab = get_object_or_404(Lab, pk=lab_id, instructor=request.user)
     lab.is_published = not lab.is_published
-    lab.save(update_fields=["is_published"])
+    if lab.is_published:
+        lab.published_at = timezone.now()
+    lab.save(update_fields=["is_published", "published_at"])
     state = "published" if lab.is_published else "unpublished"
     messages.success(request, f"Lab '{lab.title}' was {state}.")
     return redirect("instructor_dashboard")
@@ -959,7 +1000,11 @@ def instructor_lab_delete(request, lab_id):
 
 @login_required
 def student_labs(request):
-    phases = HackPhase.objects.prefetch_related("labs").filter(labs__is_published=True).distinct().order_by("order", "name")
+    phase_qs = Prefetch(
+        "labs",
+        queryset=Lab.objects.filter(is_published=True).order_by("-published_at", "-created_at"),
+    )
+    phases = HackPhase.objects.prefetch_related(phase_qs).filter(labs__is_published=True).distinct().order_by("order", "name")
     enrolled_ids = set(LabEnrollment.objects.filter(user=request.user, is_active=True).values_list("lab_id", flat=True))
 
     return render(

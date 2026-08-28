@@ -33,6 +33,7 @@ urlpatterns = [
     ), name="password_reset_complete"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("instructor-dashboard/", views.instructor_dashboard, name="instructor_dashboard"),
+    path("instructor-overview/", views.instructor_overview, name="instructor_overview"),
     path("instructor/monitor/", views.instructor_live_monitor, name="instructor_live_monitor"),
     path("instructor/students/analytics/", views.instructor_student_analytics, name="instructor_student_analytics"),
     path("instructor/students/<int:user_id>/analytics/", views.instructor_student_analytics, name="instructor_student_analytics_detail"),
