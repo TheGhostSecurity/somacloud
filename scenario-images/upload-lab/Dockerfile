@@ -1,10 +1,13 @@
-FROM php:8.1-apache
+FROM golang:1.22-alpine AS build
+WORKDIR /src
+COPY go.mod ./
+COPY main.go ./
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /upload
 
-RUN a2enmod rewrite
-RUN mkdir -p /var/www/html/uploads && chmod 777 /var/www/html/uploads
-
-COPY login.php /var/www/html/
-COPY index.php /var/www/html/
-COPY flag.txt /var/www/html/
-
-RUN chmod 644 /var/www/html/flag.txt
+FROM alpine:3.20
+RUN apk add --no-cache busybox && rm -rf /var/cache/apk/*
+COPY flag.txt /flag.txt
+COPY --from=build /upload /upload
+VOLUME /srv/uploads
+EXPOSE 80
+ENTRYPOINT ["/upload"]

@@ -1,10 +1,11 @@
-FROM php:8.1-apache
+FROM golang:1.22-alpine AS build
+WORKDIR /src
+COPY go.mod ./
+COPY main.go ./
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /idor
 
-RUN apt-get update && apt-get install -y libsqlite3-dev && docker-php-ext-install pdo pdo_sqlite && a2enmod rewrite && apt-get clean
-
-COPY login.php /var/www/html/
-COPY index.php /var/www/html/
-COPY profile.php /var/www/html/
-COPY flag.txt /var/www/html/
-
-RUN chmod 644 /var/www/html/flag.txt
+FROM scratch
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /idor /idor
+EXPOSE 80
+ENTRYPOINT ["/idor"]

@@ -52,6 +52,12 @@
                                 <div class="rounded border border-[#2c4b6c] bg-[#0b2035] px-3 py-2">
                                     <p class="text-sm font-medium text-white">{{ target.name }}</p>
                                     <p class="mt-1 font-mono text-xs text-[#8fc8ff]">{{ target.ip }}:{{ target.container_port }}</p>
+                                    {% if status == "running" and session.server_url and target.host_port %}
+                                        <a href="{{ session.server_url }}:{{ target.host_port }}/" target="_blank" rel="noopener"
+                                           class="mt-2 inline-flex items-center gap-1 rounded border border-[#3b8ac7] bg-[#12395c] px-2 py-1 text-xs font-semibold text-[#b8dcff] hover:bg-[#1a4a75]">
+                                            <i data-lucide="external-link" class="h-3.5 w-3.5"></i>Open {{ target.name }} UI
+                                        </a>
+                                    {% endif %}
                                 </div>
                             {% endfor %}
                         </div>
