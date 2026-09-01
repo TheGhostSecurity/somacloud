@@ -135,7 +135,7 @@ def _render_table(rows):
     html += "<tbody>"
     for row in body:
         fill = [cell(c, "td") for c in row] + [cell("", "td")] * max(0, cols - len(row))
-        html += "<tr class='odd:bg-[#fbfcff]'>" + "".join(fill) + "</tr>"
+        html += "<tr>" + "".join(fill) + "</tr>"
     html += "</tbody></table></div>"
     return mark_safe(html)
 
