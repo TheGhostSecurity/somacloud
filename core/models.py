@@ -24,6 +24,7 @@ class ResourceProfile(models.Model):
     cpu_count = models.DecimalField(max_digits=4, decimal_places=2, default=1)
     memory_mb = models.PositiveIntegerField(default=256)
     time_limit_minutes = models.PositiveIntegerField(default=5)
+    gui_ready = models.BooleanField(default=False, help_text="Whether sandboxes using this profile run a GUI desktop (VNC); the scheduler allocates more headroom for these.")
     description = models.TextField(blank=True)
 
     class Meta:

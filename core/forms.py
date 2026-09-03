@@ -325,7 +325,7 @@ class LabForm(forms.ModelForm):
 class ResourceProfileForm(forms.ModelForm):
     class Meta:
         model = ResourceProfile
-        fields = ["name", "cpu_count", "memory_mb", "time_limit_minutes", "description"]
+        fields = ["name", "cpu_count", "memory_mb", "time_limit_minutes", "gui_ready", "description"]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
         }
@@ -333,6 +333,7 @@ class ResourceProfileForm(forms.ModelForm):
             "cpu_count": "CPU cores (e.g. 0.25, 0.5, 1, 2, 4).",
             "memory_mb": "Memory limit in megabytes.",
             "time_limit_minutes": "Maximum session duration in minutes.",
+            "gui_ready": "Enable for profiles that run a GUI desktop (VNC) — the scheduler reserves more headroom so nodes are not oversubscribed.",
         }
 
     def __init__(self, *args, **kwargs):
@@ -343,6 +344,8 @@ class ResourceProfileForm(forms.ModelForm):
                 field.widget.attrs["class"] = base_css + " h-24"
             elif field_name in ("cpu_count", "memory_mb", "time_limit_minutes"):
                 field.widget.attrs["class"] = base_css + " w-32"
+            elif field_name == "gui_ready":
+                field.widget.attrs["class"] = "h-4 w-4 rounded border-slate-300 text-[#0067c0] focus:ring-[#0067c0]"
             else:
                 field.widget.attrs["class"] = base_css
 
