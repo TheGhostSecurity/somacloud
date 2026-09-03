@@ -21,7 +21,7 @@ DEFAULT_RESOURCES = [
     {"name": "Medium", "cpu_count": 0.5, "memory_mb": 512, "time_limit_minutes": 30, "gui_ready": False, "description": "Standard exploitation and brute-force labs."},
     {"name": "Heavy", "cpu_count": 1, "memory_mb": 1024, "time_limit_minutes": 45, "gui_ready": False, "description": "Resource-intensive cracking and web app testing."},
     {"name": "Ultra", "cpu_count": 2, "memory_mb": 2048, "time_limit_minutes": 60, "gui_ready": False, "description": "Full network simulation with multiple targets."},
-    {"name": "Desktop (GUI)", "cpu_count": 2, "memory_mb": 3072, "time_limit_minutes": 45, "gui_ready": True, "description": "GUI desktop (VNC) for Wireshark, Burp Suite and other graphical tools."},
+    {"name": "Desktop (GUI)", "cpu_count": 2, "memory_mb": 1536, "time_limit_minutes": 45, "gui_ready": True, "description": "GUI desktop (VNC) for Wireshark, Burp Suite and other graphical tools."},
 ]
 
 DEFAULT_TOOLS = [
