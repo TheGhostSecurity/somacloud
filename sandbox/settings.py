@@ -4,9 +4,37 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-local-dev-key-change-me"
-DEBUG = True
-ALLOWED_HOSTS = ["16.192.120.187", "localhost", "127.0.0.1", "13.60.192.50", "16.16.138.119"]
+# SECRET_KEY signs sessions and password-reset tokens. There is intentionally
+# no default: set DJANGO_SECRET_KEY in the environment for any deployment.
+# Generate one with:
+#   ./venv/bin/python -c "from django.core.management.utils import \
+#     get_random_secret_key; print(get_random_secret_key())"
+# Rotating it invalidates existing sessions and pending reset links.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
+
+if not SECRET_KEY:
+    raise RuntimeError(
+        "DJANGO_SECRET_KEY is not set. Export it before starting the app:\n"
+        '  export DJANGO_SECRET_KEY="$(./venv/bin/python -c '
+        "'from django.core.management.utils import get_random_secret_key; "
+        'print(get_random_secret_key())\'"" )"\n'
+        "See INSTALLATION_GUIDE.md section 3.4."
+    )
+
+# Never leave DEBUG on for a reachable deployment: it renders full tracebacks
+# and settings on error pages.
+DEBUG = os.getenv("DEBUG", "false").lower() in {"1", "true", "yes"}
+
+# Comma-separated in the environment, e.g.
+#   ALLOWED_HOSTS="somacloud.example.com,10.0.1.5"
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv(
+        "ALLOWED_HOSTS",
+        "localhost,127.0.0.1,[::1]",
+    ).split(",")
+    if h.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -100,28 +128,46 @@ DOCKER_API_TIMEOUT = int(os.getenv("DOCKER_API_TIMEOUT", "30"))
 DOCKER_PUBLIC_SCHEME = os.getenv("DOCKER_PUBLIC_SCHEME", "http")
 
 # Deprecated single-node fallback (used only when no nodes are registered)
-DOCKER_SERVER_PUBLIC_IP = os.getenv("DOCKER_SERVER_PUBLIC_IP", "192.168.1.3")
+DOCKER_SERVER_PUBLIC_IP = os.getenv("DOCKER_SERVER_PUBLIC_IP", "127.0.0.1")
 DOCKER_PORT_START = int(os.getenv("DOCKER_PORT_START", "9000"))
 DOCKER_PORT_END = int(os.getenv("DOCKER_PORT_END", "9100"))
 
-# Swarm manager IP for join commands
-SWARM_MANAGER_IP = os.getenv("SWARM_MANAGER_IP", "16.192.120.187")
+# Swarm manager IP for join commands. Required when running multi-node.
+SWARM_MANAGER_IP = os.getenv("SWARM_MANAGER_IP", "")
 
-# App server base URL (workers reach this for CA signing + token endpoints)
-APP_SERVER_URL = os.getenv("APP_SERVER_URL", "http://16.192.120.187:8000")
+# App server base URL (workers reach this for CA signing + token endpoints).
+# Must be reachable *from the worker nodes*, not just from the app server.
+APP_SERVER_URL = os.getenv("APP_SERVER_URL", "http://127.0.0.1:8000")
 
 # ---------------------------------------------------------------------------
 # Email / Password Reset
 # ---------------------------------------------------------------------------
-# Dev: prints emails to the terminal (no SMTP required).
-# Production: uncomment the Gmail block below and set env vars, or use SendGrid/Mailgun.
+# Email / password reset
+# ---------------------------------------------------------------------------
+# No credentials live in this file. Supply them through the environment, e.g.
+# in the systemd unit:
+#
+#   [Service]
+#   Environment="EMAIL_HOST_USER=you@example.com"
+#   Environment="EMAIL_HOST_PASSWORD=your-app-password"
+#   EnvironmentFile=/etc/somacloud/env
+#
+# For Gmail use an App Password (not your account password), with 2FA enabled.
+# Locally, override the backend to print mail to the terminal instead:
+#
+#   EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+#
+# Leaving EMAIL_HOST_PASSWORD unset disables outbound mail; password-reset
+# links will then be logged rather than sent.
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "REDACTED-EMAIL")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "REDACTED-EMAIL-APP-PASSWORD")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "SomaCloud <REDACTED-EMAIL>")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL", f"SomaCloud <{EMAIL_HOST_USER or 'noreply@example.com'}>"
+)
 
-DOMAIN = os.getenv("DOMAIN", "16.192.120.187")
+DOMAIN = os.getenv("DOMAIN", "127.0.0.1")
 SITE_NAME = "SomaCloud"

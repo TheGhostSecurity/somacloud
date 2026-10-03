@@ -1,0 +1,8 @@
+# docker-tls/ ships OpenSSL configuration templates only.
+# Real keys and certificates are generated per deployment (INSTALLATION_GUIDE.md
+# section 5) and are deliberately not tracked. A CA signing key can mint
+# certificates that every Docker node trusts, so it must never be committed.
+docker-tls/*
+!docker-tls/ca-openssl.cnf
+!docker-tls/client-openssl.cnf
+!docker-tls/signing-openssl.cnf

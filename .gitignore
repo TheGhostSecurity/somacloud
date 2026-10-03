@@ -1,12 +1,39 @@
+# Python
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 myenv/
+
+# Database (contains user password hashes and session state)
 db.sqlite3
-media/
-.env
-backups/
 *.sqlite3
 *.sqlite3.bak-*
-db.sqlite3
+
+# Media uploads — includes the Docker node SSH private keys.
+# The DB stores only a row pointing at these files, so they are NOT in git.
+# Use ./scripts/backup.sh, which archives media/ into an encrypted backup.
+media/
+
+# Environment / secrets
+.env
+
+# Backups — raw artifacts stay local. Only *.tar.gz.enc is committed
+# (see backups/.gitignore for the encryption requirement).
+backups/
+
+# ---------------------------------------------------------------------------
+# TLS / PKI material — NEVER commit real keys or certificates.
+# The CA signing key can mint trusted Swarm node certs. Generate your own
+# with the steps in INSTALLATION_GUIDE.md section 5.
+# ---------------------------------------------------------------------------
+*.pem
+*.key
+*.csr
+*.srl
+*.p12
+*.pfx
+*.jks
+ca/
+certs/
+docker-tls/

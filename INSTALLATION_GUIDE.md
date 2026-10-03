@@ -21,19 +21,19 @@ The system has three logical tiers:
 | **TLS infrastructure** | Mutual TLS between app server and workers | OpenSSL + a self-hosted CA (`core/ca.py`) |
 
 ```
-                          +-----------------------------+
-                          |   Application server         |
-                          |   16.192.120.187:8000        |
-                          |   Django + orchestrator      |
-                          +--------------+--------------+
-                                         | HTTPS :2376 (mutual TLS)
-                    +--------------------+---------------------+
-                    |                                          |
-          +---------+---------+                    +-----------+-----------+
-          |  Worker node 1    |                    |  Worker node 2         |
-          |  kali (Docker)    |                    |  kali2 (Docker)        |
-          |  13.50.225.194    |                    |  13.48.137.218         |
-          +-------------------+                    +-----------------------+
++---------------------------------+
+|   Application server            |
+|   <app-server-ip>:8000          |
+|   Django + orchestrator         |
++----------------+----------------+
+                 | HTTPS :2376 (mutual TLS)
+   +-------------+-------------+
+   |                           |
++---------+---------+  +--------+---------+
+|  Worker node 1  |  |  Worker node 2   |
+|  kali (Docker)  |  |  kali2 (Docker)  |
+| <worker-1-ip>   |  | <worker-2-ip>    |
++-----------------+  +------------------+
 ```
 
 **Key design decision:** the app server and every worker node share the same
@@ -124,39 +124,69 @@ reportlab==4.4.0
 pypdf==5.1.0
 ```
 
-> **Deploying to a different machine?** The app server IP, node IPs and Docker
-> endpoint are hardcoded throughout this guide and in
-> `sandbox/settings.py`. Collect them from the values in §12.6 — you will need
-> to update `ALLOWED_HOSTS`, `DOCKER_HOST`, `SWARM_MANAGER_IP`,
-> `APP_SERVER_URL`, `DOMAIN`, the `DOCKER_SERVER_PUBLIC_IP` fallback, and every
-> `DockerNode` row. If you are restoring from a backup, read §12 first: the
-> database carries your labs and cannot be recreated from the seed scripts.
+> **Deploying to a different machine?** Every host-specific value in
+> `sandbox/settings.py` is now read from the environment with a placeholder
+> default, so you do not edit that file at all — see §3.4. You will still need
+> to register your Docker nodes (they are `DockerNode` database rows, not
+> settings) and, if you are restoring from a backup, work through §12.6.
 
 ### 3.4 Configure Django settings
 
-Edit `sandbox/settings.py`:
+Do not edit `sandbox/settings.py` for host-specific values. It reads everything
+from the environment and contains **no credentials and no real IPs**.
 
-- **`ALLOWED_HOSTS`** — add the public IP / domain of the app server:
-  ```python
-  ALLOWED_HOSTS = ["16.192.120.187", "localhost", "127.0.0.1"]
-  ```
-- **`SECRET_KEY`** — replace the development key with a generated one:
-  ```bash
-  python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-  ```
-- **`APP_SERVER_URL`** — the base URL workers use to reach the app server for
-  certificate signing and setup callbacks:
-  ```python
-  APP_SERVER_URL = "http://16.192.120.187:8000"
-  ```
-- **`SWARM_MANAGER_IP`** — public IP of the application server:
-  ```python
-  SWARM_MANAGER_IP = "16.192.120.187"
-  ```
+Set these before starting the app:
 
-> **Note:** set `DEBUG = False` and use a production WSGI server (e.g. Gunicorn)
-> in production. The reference deployment runs Django's development server via
-> systemd for a small institutional deployment.
+```bash
+export DJANGO_SECRET_KEY="$(./venv/bin/python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')"
+export ALLOWED_HOSTS="somacloud.example.com"    # comma-separated
+export DEBUG="false"
+export SWARM_MANAGER_IP="10.0.1.10"             # public IP of the app server
+export APP_SERVER_URL="http://10.0.1.10:8000"    # reachable FROM the workers
+export EMAIL_HOST_USER="you@example.com"
+export EMAIL_HOST_PASSWORD="your-app-password"   # Gmail: use an App Password
+```
+
+| Variable | Purpose |
+|----------|---------|
+| `DJANGO_SECRET_KEY` | Signs sessions and password-reset tokens. **Required** — the app refuses to start without it rather than falling back to a known key |
+| `ALLOWED_HOSTS` | Comma-separated hostnames/IPs the app answers to |
+| `DEBUG` | Defaults to `false`. Never enable on a reachable deployment |
+| `SWARM_MANAGER_IP` | Public IP used in Swarm join commands |
+| `APP_SERVER_URL` | Base URL workers use for CA signing and setup callbacks |
+| `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | SMTP credentials. Unset = mail logged, not sent |
+
+Better than `export`, so values do not land in shell history — use an
+environment file the service reads:
+
+```ini
+# /etc/somacloud/env    (chmod 600, owned by the service user)
+DJANGO_SECRET_KEY=<generated value>
+ALLOWED_HOSTS=somacloud.example.com
+DEBUG=false
+SWARM_MANAGER_IP=10.0.1.10
+APP_SERVER_URL=http://10.0.1.10:8000
+EMAIL_HOST_USER=you@example.com
+EMAIL_HOST_PASSWORD=<app password>
+```
+
+```ini
+# /etc/systemd/system/somacloud.service
+[Service]
+EnvironmentFile=/etc/somacloud/env
+```
+
+Then verify:
+
+```bash
+./venv/bin/python manage.py check          # fails loudly if SECRET_KEY is unset
+./venv/bin/python manage.py check --deploy # security warnings
+```
+
+> **Note:** for a real production deployment, also front Django with a
+> production WSGI server (e.g. Gunicorn) and terminate TLS at a reverse proxy.
+> The reference deployment runs Django's development server via systemd for a
+> small institutional install.
 
 ### 3.5 Database setup
 
@@ -257,6 +287,21 @@ python manage.py register_container_image \
 SomaCloud runs a self-hosted Certificate Authority so the app server and all
 worker nodes can authenticate each other over HTTPS (mutual TLS).
 
+> **TLS material is never committed to this repository.** `.gitignore` excludes
+> `ca/`, `certs/`, `docker-tls/` and all `*.pem` / `*.key` / `*.csr` / `*.srl`
+> files. A CA signing key can mint certificates that every Docker node will
+> trust, which means anyone holding it can join your Swarm and run arbitrary
+> containers on your workers. Treat a leaked CA as a full compromise.
+>
+> `.gitignore` only prevents *future* commits. Check whether a secret is
+> already tracked:
+>
+> ```bash
+> git ls-files | grep -iE '\.pem$|\.key$|\.csr$|^ca/|^certs/'
+> ```
+>
+> Anything listed must be purged from history (§5.4), not merely ignored.
+
 ### 5.1 Generate the CA
 
 The CA keypair, certificate, and signing logic live in `core/ca.py`. The CA is
@@ -276,7 +321,82 @@ ca/
 └── ca.crt          # self-signed CA certificate
 ```
 
-### 5.2 How the certificate flow works
+### 5.2 Regenerating the CA after a leak
+
+Removing a key from a working tree does not revoke it. To rotate a
+compromised CA:
+
+```bash
+cd /home/kali/somacloud
+
+# 1. Move the old CA aside (destroy the copy once you have a new one working)
+sudo mv ca ca.compromised.$(date +%Y%m%d)
+
+# 2. Generate a fresh CA
+./venv/bin/python -c "from core import ca; ca.ensure_ca()"
+chmod 600 ca/ca.key
+
+# 3. Delete every issued client certificate
+sudo rm -rf certs/*
+```
+
+Every node also needs a fresh **server** certificate: the old one was signed by
+the retired CA and workers will no longer trust it. Re-run the node Setup flow
+(admin UI → Nodes → Setup) per worker, which regenerates the node keypair and
+CSR, requests a signature, rewrites `/etc/docker/tls/` and restarts Docker.
+
+Confirm workers no longer accept anything signed by the old CA, then purge it
+from git (§5.4).
+
+### 5.3 What ships in the repository
+
+A fresh clone contains **no TLS material**. Only these OpenSSL configuration
+templates are tracked, and they hold no keys:
+
+| File | Purpose |
+|------|---------|
+| `docker-tls/ca-openssl.cnf` | CA signing parameters |
+| `docker-tls/client-openssl.cnf` | Client certificate extension profile |
+| `docker-tls/signing-openssl.cnf` | CSR signing extensions |
+
+To add another non-secret file to `docker-tls/`, add a negation rule:
+
+```gitignore
+docker-tls/*
+!docker-tls/*.cnf
+```
+
+### 5.4 Purging secrets from git history
+
+Back up first — this rewrites every commit SHA:
+
+```bash
+git bundle create ../somacloud-history.bundle --all
+./venv/bin/pip install git-filter-repo
+
+git filter-repo --path ca/ca.key --invert-paths
+git filter-repo --path docker-tls/server-key.pem --invert-paths
+```
+
+Verify before pushing:
+
+```bash
+git log --all --full-history -- '*ca.key' '*key.pem'    # expect no commits
+git grep -I 'BEGIN RSA PRIVATE KEY' $(git rev-list --all) 2>/dev/null | head
+```
+
+Force-push and have collaborators re-clone:
+
+```bash
+git push --force-with-lease origin main
+```
+
+Deleting a secret in a new commit is **not** sufficient — it stays in history.
+Also rotate anything that was exposed: history rewriting hides what was
+published, but public secrets should be considered compromised regardless, and
+forks or caches may retain copies.
+
+### 5.5 How the certificate flow works
 
 1. The admin registers a node (IP + SSH key) in the Django UI and clicks **Setup**.
 2. The app server generates a one-time **setup token** and builds a bash script.
@@ -319,7 +439,7 @@ Two options are available.
 
 1. Add the node in the Django UI: **Administration → Docker Nodes → Add Node**.
    - **Name:** `kali2`
-   - **Public IP:** `13.48.137.218`
+   - **Public IP:** `<worker-2-ip>`
    - **SSH user / port:** `kali`, `22`
    - **SSH key:** select a pre-uploaded key (**Administration → SSH Keys → Upload**)
    - Leave **Docker host** empty; it defaults to `http://<ip>:2376` and is
@@ -374,8 +494,8 @@ Nodes can also be registered with the management command:
 ```bash
 python manage.py register_node \
     --name kali2 \
-    --public-ip 13.48.137.218 \
-    --docker-host https://13.48.137.218:2376 \
+    --public-ip <worker-2-ip> \
+    --docker-host https://<worker-2-ip>:2376 \
     --port-start 9000 \
     --port-end 9100 \
     --total-cpu 2 \
@@ -472,8 +592,8 @@ The reference workflow copies updated files to the server and restarts:
 
 ```bash
 # from your development machine
-scp -i somacloud.pem core/views.py kali@16.192.120.187:/home/kali/somacloud/core/
-scp -i somacloud.pem templates/*.html kali@16.192.120.187:/home/kali/somacloud/templates/
+scp -i somacloud.pem core/views.py kali@<app-server-ip>:/home/kali/somacloud/core/
+scp -i somacloud.pem templates/*.html kali@<app-server-ip>:/home/kali/somacloud/templates/
 
 # on the server
 cd /home/kali/somacloud && source venv/bin/activate
@@ -500,7 +620,7 @@ scp core/management/commands/seed_data.py host:/home/kali/somacloud/core/
 Copy to the **full** destination path every time, then verify:
 
 ```bash
-ssh -i somacloud.pem kali@16.192.120.187 \
+ssh -i somacloud.pem kali@<app-server-ip> \
   'ls -l /home/kali/somacloud/core/migrations/ /home/kali/somacloud/core/management/commands/'
 ```
 

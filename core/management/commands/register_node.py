@@ -11,7 +11,7 @@ class Command(BaseCommand):
         parser.add_argument("--name", required=True, help="Node name (e.g. worker-1)")
         parser.add_argument("--docker-node-id", default="", help="Swarm node ID")
         parser.add_argument("--public-ip", required=True, help="Public IP address")
-        parser.add_argument("--docker-host", required=True, help="Docker API URL (e.g. https://16.192.120.188:2376)")
+        parser.add_argument("--docker-host", required=True, help="Docker API URL (e.g. https://worker-1.example.com:2376)")
         parser.add_argument("--port-start", type=int, default=9000, help="Start of port range")
         parser.add_argument("--port-end", type=int, default=9100, help="End of port range")
         parser.add_argument("--total-cpu", type=float, default=2.0, help="Total CPU cores")
